@@ -23,12 +23,14 @@
     .game { display:flex; flex:1; min-height:0; flex-direction:column; align-items:center; justify-content:flex-end; gap:32px; }
     .turn { flex:1; display:grid; place-items:center; width:100%; padding-top:18px; color:#004cff; font-size:32px; font-weight:900; line-height:1.2; }
     .drop-zone { height:48px; flex:none; width:100%; position:relative; }
-    .chip-preview { position:absolute; top:0; opacity:0; transform:translateY(-26px); pointer-events:none; transition:transform .15s ease; }
-    .chip-preview img { width:100%; height:100%; display:block; }
-    .chip-preview.show { opacity:1; transform:translateY(-2px); }
-    .restart { position:absolute; top:0; left:50%; display:none; transform:translateX(-50%); padding:16px; border:0; border-radius:40px; background:#111; color:#f8f8f8; font:700 16px/20px 'Merriweather', Georgia, serif; white-space:nowrap; cursor:pointer; }
-    .restart.show { display:block; }
-    .board-sheet { flex:none; position:relative; width:100%; border-top:1px solid #dfdfdf; border-radius:40px 40px 0 0; background:#ececec; padding:16px 16px 56px; }
+    .chip-preview { --chip:#004cff; --trail:rgba(0,76,255,.3); position:absolute; z-index:1; opacity:0; border-radius:999px 999px 0 0; background:var(--trail); pointer-events:none; transition:opacity .15s ease; }
+    .chip-preview::after { content:''; position:absolute; top:2px; left:2px; width:calc(100% - 4px); aspect-ratio:1; border-radius:50%; background:var(--chip); }
+    .chip-preview.show { opacity:1; }
+    .robot-preview { --chip:#111; --trail:rgba(17,17,17,.3); transition:left .42s cubic-bezier(.2,.8,.3,1), opacity .14s ease; }
+    .robot-preview.show { opacity:1; }
+    .restart { position:relative; z-index:3; left:50%; width:auto; height:56px; margin-top:32px; padding:0 16px; display:none; align-items:center; justify-content:center; border:0; border-radius:40px; background:#111; color:#f8f8f8; font:700 16px/20px 'Merriweather', Georgia, serif; cursor:pointer; transform:translateX(-50%); }
+    .restart.show { display:inline-flex; }
+    .board-sheet { flex:none; position:relative; width:100%; border-top:1px solid #dfdfdf; border-radius:40px 40px 0 0; background:#ececec; padding:16px 16px 64px; }
     .hole-layer, .body-layer { position:absolute; inset:0; pointer-events:none; }
     .hole-layer { z-index:0; } .body-layer { z-index:2; overflow:hidden; border-radius:40px 40px 0 0; }
     .hole { position:absolute; border-radius:50%; background:#fff; }
@@ -39,21 +41,21 @@
     .cell { aspect-ratio:1; min-width:0; border-radius:50%; background:transparent; pointer-events:none; transition:background .16s ease; }
     .cell.blue { background:#004cff; }
     .cell.black { background:#111; }
-    .cell.path { background:rgba(0,76,255,.3); }
     .cell.hint { outline:3px solid #004cff; outline-offset:-3px; }
     .cell.win { outline:none; }
-    .controls { height:56px; margin-top:8px; border-radius:999px; display:grid; grid-template-columns:repeat(7,1fr); align-items:center; position:relative; z-index:3; background:#fff; cursor:grab; touch-action:none; }
+    .controls { height:56px; margin-top:32px; border-radius:999px; display:grid; grid-template-columns:repeat(7,1fr); align-items:center; position:relative; z-index:3; background:#fff; cursor:grab; touch-action:none; }
+    .controls.hidden { display:none; }
     .control { place-self:center; width:4px; height:4px; border-radius:50%; background:#b8b8b8; }
     .control.selected { background:#004cff; }
     .slider-thumb { position:absolute; z-index:1; top:16px; width:24px; height:24px; border:0; border-radius:50%; padding:0; background:#004cff; cursor:grab; touch-action:none; }
     .slider-thumb:active { cursor:grabbing; transform:scale(.96); }
     .message { position:absolute; inset:auto 24px 36px; padding:12px 16px; text-align:center; border-radius:16px; background:#111; color:white; font-size:14px; opacity:0; transform:translateY(16px); transition:.2s; pointer-events:none; }
     .message.visible { opacity:1; transform:translateY(0); }
-    .falling-chip { position:absolute; z-index:1; border-radius:50%; pointer-events:none; transition:top 600ms cubic-bezier(.22,1.16,.36,1); }
+    .falling-chip { position:absolute; z-index:1; border-radius:50%; pointer-events:none; }
     .turn.dark { color:#111; }
     .falling-chip.blue { background:#004cff; } .falling-chip.black { background:#111; }
     @media (max-width:450px) { .app { border-radius:0; } }
-    @media (max-height:730px) { .app { min-height:100%; } .game { gap:16px; } .board-sheet { padding-bottom:18px; } }
+    @media (max-height:730px) { .app { min-height:100%; } .game { gap:16px; } .board-sheet { padding-bottom:26px; } }
     @media (prefers-reduced-motion:reduce) { .falling-chip { transition-duration:1ms; } }
   </style>
 </head>
@@ -66,13 +68,16 @@
     </header>
     <section class="game">
       <div class="turn" id="turn" aria-live="polite">Твой ход</div>
-      <div class="drop-zone"><div class="chip-preview" id="preview"><img src="assets/selected-column.svg" alt=""></div><button class="restart" id="restart" type="button">Сыграть ещё</button></div>
+      <div class="drop-zone"></div>
       <section class="board-sheet" aria-label="Игровое поле">
         <div class="hole-layer" id="holes"></div>
+        <div class="chip-preview" id="preview" aria-hidden="true"></div>
+        <div class="chip-preview robot-preview" id="robot-preview" aria-hidden="true"></div>
         <div class="body-layer" id="body-layer"></div>
         <div class="guide" id="guide"></div>
         <div class="board" id="board"></div>
         <div class="controls" id="controls" aria-label="Выбор столбца"></div>
+        <button class="restart" id="restart" type="button">Сыграть ещё</button>
       </section>
     </section>
     <div class="message" id="message" role="status"></div>
@@ -82,8 +87,9 @@
     let board = Array.from({length: rows}, () => Array(cols).fill(null));
     let selected = 4, locked = false, timer;
     const boardEl = document.querySelector('#board'), controls = document.querySelector('#controls');
-    const turn = document.querySelector('#turn'), preview = document.querySelector('#preview'), restart = document.querySelector('#restart'), message = document.querySelector('#message');
+    const turn = document.querySelector('#turn'), preview = document.querySelector('#preview'), robotPreview = document.querySelector('#robot-preview'), restart = document.querySelector('#restart'), message = document.querySelector('#message');
     const guide = document.querySelector('#guide'), boardSheet = document.querySelector('.board-sheet');
+    const dropZone = document.querySelector('.drop-zone');
     const holes = document.querySelector('#holes'), bodyLayer = document.querySelector('#body-layer');
 
     function render() {
@@ -128,21 +134,45 @@
       svg.append(path); bodyLayer.append(svg);
     }
     function firstOpen(c) { for (let r = rows - 1; r >= 0; r--) if (!board[r][c]) return r; return -1; }
+    function availableColumns() { return Array.from({length:cols}, (_, c) => c).filter(c => firstOpen(c) !== -1); }
+    function wouldWin(c, color) {
+      const r = firstOpen(c); if (r < 0) return false;
+      board[r][c] = color; const win = Boolean(findWin(r, c, color)); board[r][c] = null;
+      return win;
+    }
+    function countThreats(color) { return availableColumns().filter(c => wouldWin(c, color)).length; }
+    function scoreRobotMove(c) {
+      const r = firstOpen(c); board[r][c] = 'black';
+      const score = countThreats('black') * 60 - countThreats('blue') * 90 + (3 - Math.abs(3 - c)) * 4;
+      board[r][c] = null; return score;
+    }
+    function chooseRobotColumn() {
+      const options = availableColumns();
+      const winning = options.find(c => wouldWin(c, 'black')); if (winning !== undefined) return winning;
+      const block = options.find(c => wouldWin(c, 'blue')); if (block !== undefined) return block;
+      const best = Math.max(...options.map(scoreRobotMove));
+      const candidates = options.filter(c => scoreRobotMove(c) === best);
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
     function positionPreview() {
       const targetRow = firstOpen(selected);
-      const target = targetRow < 0 ? null : boardEl.children[targetRow * cols + selected];
-      if (!target || locked) { preview.classList.remove('show'); return; }
-      const targetRect = target.getBoundingClientRect(), zoneRect = preview.parentElement.getBoundingClientRect(), sheetRect = boardSheet.getBoundingClientRect();
+      if (targetRow < 0 || locked) { preview.classList.remove('show'); return; }
+      positionChipPreview(preview, selected); preview.classList.add('show');
+    }
+    function positionChipPreview(chip, c) {
+      const target = boardEl.children[c]; if (!target) return;
+      const targetRect = target.getBoundingClientRect(), zoneRect = dropZone.getBoundingClientRect(), sheetRect = boardSheet.getBoundingClientRect();
       const visualWidth = targetRect.width * 1.16, visualHeight = visualWidth * 92 / 52;
-      preview.style.width = `${visualWidth}px`; preview.style.height = `${visualHeight}px`;
-      preview.style.left = `${targetRect.left - zoneRect.left + (targetRect.width - visualWidth) / 2}px`;
-      preview.classList.add('show');
+      const top = zoneRect.top - sheetRect.top - 2;
+      chip.style.left = `${targetRect.left - sheetRect.left + (targetRect.width - visualWidth) / 2}px`;
+      chip.style.top = `${top}px`;
+      chip.style.width = `${visualWidth}px`;
+      chip.style.height = `${sheetRect.height - top}px`;
     }
     function updateSelection() {
       const openRow = firstOpen(selected);
       Array.from(boardEl.children).forEach((cell, index) => {
         const r = Math.floor(index / cols), c = index % cols;
-        cell.classList.toggle('path', !locked && !board[r][c] && c === selected && r <= openRow);
         cell.classList.toggle('hint', !locked && !board[r][c] && c === selected && r === openRow);
       });
       controls.querySelectorAll('.control').forEach(dot => dot.classList.toggle('selected', Number(dot.dataset.column) === selected));
@@ -152,7 +182,7 @@
     }
     function clearSelectionVisuals() {
       preview.classList.remove('show');
-      Array.from(boardEl.children).forEach(cell => cell.classList.remove('path', 'hint'));
+      Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint'));
     }
     function beginSlide(event) {
       if (locked) return;
@@ -171,29 +201,47 @@
       thumb.addEventListener('pointermove', move); thumb.addEventListener('pointerup', release); thumb.addEventListener('pointercancel', cancel);
     }
     function show(text) { message.textContent = text; message.classList.add('visible'); clearTimeout(timer); timer = setTimeout(() => message.classList.remove('visible'), 2200); }
-    async function play(c, color) {
+    async function play(c, color, sourceRect) {
       if (locked || firstOpen(c) < 0 || color === 'blue' && turn.textContent !== 'Твой ход') return;
       const r = firstOpen(c); locked = true; clearSelectionVisuals();
-      await animateDrop(c, r, color); board[r][c] = color; render();
+      await animateDrop(c, r, color, sourceRect); board[r][c] = color; render();
       const win = findWin(r, c, color);
       if (win) return finish(color, win);
       if (board.flat().every(Boolean)) return finish(null);
       if (color === 'blue') { turn.textContent = 'Ход соперника'; turn.classList.add('dark'); locked = true; preview.classList.remove('show'); setTimeout(computer, 520); }
       else { locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); render(); }
     }
-    async function computer() {
-      const options = Array.from({length:cols}, (_, c) => c).filter(c => firstOpen(c) !== -1);
-      const c = options.includes(3) ? 3 : options[Math.floor(Math.random() * options.length)];
-      locked = false; await play(c, 'black');
+    function positionRobotPreview(c) {
+      positionChipPreview(robotPreview, c);
     }
-    async function animateDrop(c, r, color) {
-      const target = boardEl.children[r * cols + c], targetRect = target.getBoundingClientRect(), sheetRect = boardSheet.getBoundingClientRect(), previewRect = preview.getBoundingClientRect();
+    async function showRobotIntent(c) {
+      const options = availableColumns();
+      const start = options.find(column => column === selected && column !== c) ?? options.find(column => column !== c) ?? c;
+      positionRobotPreview(start); robotPreview.classList.add('show');
+      await new Promise(resolve => setTimeout(resolve, 1000)); positionRobotPreview(c);
+      await new Promise(resolve => setTimeout(resolve, 440));
+      await new Promise(resolve => setTimeout(resolve, 220)); const sourceRect = robotPreview.getBoundingClientRect(); robotPreview.classList.remove('show');
+      return sourceRect;
+    }
+    async function computer() {
+      const c = chooseRobotColumn();
+      const sourceRect = await showRobotIntent(c);
+      locked = false; await play(c, 'black', sourceRect);
+    }
+    async function animateDrop(c, r, color, sourceRect) {
+      const target = boardEl.children[r * cols + c], targetRect = target.getBoundingClientRect(), sheetRect = boardSheet.getBoundingClientRect(), previewRect = sourceRect || preview.getBoundingClientRect();
       const chip = document.createElement('div'); chip.className = `falling-chip ${color}`;
       chip.style.width = `${targetRect.width}px`; chip.style.height = `${targetRect.height}px`;
-      chip.style.left = `${targetRect.left - sheetRect.left}px`; chip.style.top = `${previewRect.top - sheetRect.top + previewRect.height * 2 / 92}px`;
+      chip.style.left = `${targetRect.left - sheetRect.left}px`; chip.style.top = `${previewRect.top - sheetRect.top + 2}px`;
       boardSheet.append(chip); await new Promise(requestAnimationFrame);
-      chip.style.top = `${targetRect.top - sheetRect.top}px`;
-      await new Promise(resolve => setTimeout(resolve, 600)); window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('medium'); chip.remove();
+      const start = Number.parseFloat(chip.style.top), distance = targetRect.top - sheetRect.top - start;
+      const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : 600;
+      const animation = chip.animate([
+        { transform:'translateY(0)' },
+        { transform:'translateY(-16px)', offset:.11, easing:'cubic-bezier(.2,0,.2,1)' },
+        { transform:`translateY(${distance}px)`, offset:1, easing:'cubic-bezier(.16,.72,.28,1)' }
+      ], { duration, fill:'forwards' });
+      await animation.finished.catch(() => undefined); window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('medium'); chip.remove();
     }
     function findWin(r, c, color) {
       const directions = [[0,1],[1,0],[1,1],[1,-1]];
@@ -203,8 +251,8 @@
         if (line.length >= 4) return line;
       }
     }
-    function finish(color, cells) { locked = true; if (cells) cells.forEach(([r,c]) => boardEl.children[r * cols + c].classList.add('win')); turn.textContent = color === 'blue' ? 'Победа' : color === 'black' ? 'Поражение' : 'Ничья'; turn.classList.toggle('dark', color === 'black'); restart.classList.add('show'); show(turn.textContent); }
-    restart.onclick = () => { board = Array.from({length: rows}, () => Array(cols).fill(null)); selected = 4; locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); restart.classList.remove('show'); message.classList.remove('visible'); render(); };
+    function finish(color, cells) { locked = true; if (cells) cells.forEach(([r,c]) => boardEl.children[r * cols + c].classList.add('win')); turn.textContent = color === 'blue' ? 'Победа' : color === 'black' ? 'Поражение' : 'Ничья'; turn.classList.toggle('dark', color === 'black'); controls.classList.add('hidden'); restart.classList.add('show'); show(turn.textContent); }
+    restart.onclick = () => { board = Array.from({length: rows}, () => Array(cols).fill(null)); selected = 4; locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); robotPreview.classList.remove('show'); controls.classList.remove('hidden'); restart.classList.remove('show'); message.classList.remove('visible'); render(); };
     function applyTelegramSafeArea() {
       const tg = window.Telegram?.WebApp;
       if (!tg) return;
