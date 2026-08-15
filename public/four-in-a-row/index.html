@@ -20,7 +20,6 @@
     .exit img { width:44px; height:44px; }
     h1 { position:absolute; inset:22px 0 auto; margin:0; pointer-events:none; text-align:center; font-size:20px; line-height:29px; font-weight:700; }
     .opponent { position:absolute; top:59px; left:50%; transform:translateX(-50%); display:flex; gap:6px; align-items:center; padding:4px 12px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font-size:12px; font-weight:600; white-space:nowrap; }
-    .opponent img { width:20px; height:20px; border-radius:50%; object-fit:cover; }
     .game { display:flex; flex:1; min-height:0; flex-direction:column; align-items:center; justify-content:flex-end; gap:32px; }
     .turn { flex:1; display:grid; place-items:center; width:100%; padding-top:18px; color:#004cff; font-size:40px; font-weight:900; line-height:1.2; }
     .drop-zone { height:48px; flex:none; width:100%; position:relative; }
@@ -59,7 +58,7 @@
   <main class="app" aria-label="Игра Четыре в ряд">
     <header class="header">
       <h1>Четыре в ряд</h1>
-      <div class="opponent"><span>Соперник</span><img src="assets/avatar-1.jpeg" alt=""><span>serezha</span></div>
+      <div class="opponent">Соперник Робот</div>
       <a class="exit" href="/" aria-label="Вернуться на главную"><img src="assets/leave.svg" alt=""></a>
     </header>
     <section class="game">

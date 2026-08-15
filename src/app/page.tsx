@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const cells = (className: string, count: number) => (
   <div className={`game-preview ${className}`} aria-hidden="true">
@@ -10,6 +10,14 @@ const cells = (className: string, count: number) => (
 
 export default function Home() {
   const [notice, setNotice] = useState(false);
+  const [profile, setProfile] = useState<{ name: string; photoUrl?: string } | null>(null);
+
+  useEffect(() => {
+    const user = window.Telegram?.WebApp.initDataUnsafe.user;
+    if (!user) return;
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || '';
+    if (name) setProfile({ name, photoUrl: user.photo_url });
+  }, []);
 
   const showSoon = () => {
     setNotice(true);
@@ -20,7 +28,7 @@ export default function Home() {
     <main className="games-app">
       <header className="games-header">
         <h1>Blitzzz</h1>
-        <p className="profile"><img src="/four-in-a-row/assets/avatar-1.jpeg" alt="" /><span>serezha</span></p>
+        {profile && <p className="profile">{profile.photoUrl && <img src={profile.photoUrl} alt="" />}<span>{profile.name}</span></p>}
       </header>
       <section className="games" aria-label="Игры">
         <a className="game-card" href="/four-in-a-row/index.html">
