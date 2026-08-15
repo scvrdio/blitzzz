@@ -1,0 +1,9 @@
+node_modules/
+.pnpm-store/
+.next/
+.env.local
+.env*.local
+
+# Debug and system files
+*.log
+.DS_Store
