@@ -1,23 +1,43 @@
 'use client';
 
-import { useTelegramAuth } from '../components/telegram/TelegramAuthProvider';
+import { useState } from 'react';
+
+const cells = (className: string, count: number) => (
+  <div className={`game-preview ${className}`} aria-hidden="true">
+    {Array.from({ length: count }, (_, index) => <i key={index} />)}
+  </div>
+);
 
 export default function Home() {
-  const auth = useTelegramAuth();
+  const [notice, setNotice] = useState(false);
+
+  const showSoon = () => {
+    setNotice(true);
+    window.setTimeout(() => setNotice(false), 1800);
+  };
 
   return (
-    <main className="app-shell">
-      <section className="welcome-card">
-        <p className="eyebrow">TELEGRAM MINI APP</p>
-        <h1>blitzzz</h1>
-        <p className="subtitle">
-          {auth.status === 'authenticated'
-            ? 'Telegram подключён. Начинайте первый пользовательский сценарий.'
-            : 'Чистая основа для первого пользовательского сценария.'}
-        </p>
-        {auth.status === 'browser' && <p className="notice">Откройте приложение внутри Telegram для полной проверки.</p>}
-        {auth.status === 'error' && <p className="notice">Не удалось подтвердить сессию Telegram. Проверьте переменные окружения.</p>}
+    <main className="games-app">
+      <header className="games-header">
+        <h1>Blitzzz</h1>
+        <p className="profile"><img src="/four-in-a-row/assets/avatar-1.jpeg" alt="" /><span>serezha</span></p>
+      </header>
+      <section className="games" aria-label="Игры">
+        <a className="game-card" href="/four-in-a-row/index.html">
+          <div className="copy"><h2>Четыре в ряд</h2><p>Собери четыре фишки в линию раньше соперника</p></div>
+          {cells('connect', 42)}
+        </a>
+        <button className="game-card soon" onClick={showSoon}>
+          <div className="copy"><h2>Крестики-нолики</h2><p>Выстрой три своих знака в ряд</p></div>{cells('tic', 9)}<span className="badge">Скоро</span>
+        </button>
+        <button className="game-card soon" onClick={showSoon}>
+          <div className="copy"><h2>Морской бой</h2><p>Найди и потопи корабли соперника</p></div>{cells('sea', 100)}<span className="badge">Скоро</span>
+        </button>
+        <button className="game-card soon" onClick={showSoon}>
+          <div className="copy"><h2>Коридор</h2><p>Дойди до края поля первым, задерживая противника стенами</p></div>{cells('hall', 100)}<span className="badge">Скоро</span>
+        </button>
       </section>
+      <div className={`notice${notice ? ' visible' : ''}`} role="status">Игра появится скоро</div>
     </main>
   );
 }
