@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { telegram } from '../../lib/telegram/client';
 import type { TelegramInsets } from '../../lib/telegram/types';
 
 function applyInsets(name: 'tg-safe' | 'tg-content-safe', insets?: TelegramInsets) {
@@ -11,27 +10,44 @@ function applyInsets(name: 'tg-safe' | 'tg-content-safe', insets?: TelegramInset
   }
 }
 
+function isMobile(platform?: string) {
+  return platform === 'ios' || platform === 'android';
+}
+
 export function TelegramBoot() {
   useEffect(() => {
-    telegram.init();
-    telegram.requestFullscreen();
+    const root = document.documentElement;
+    root.style.setProperty('--tg-content-safe-top', '0px');
+    root.style.setProperty('--tg-content-safe-bottom', '0px');
+    const webApp = window.Telegram?.WebApp;
+    if (!webApp) return;
+
+    const prepare = () => {
+      try {
+        webApp.ready();
+        webApp.expand();
+        if (isMobile(webApp.platform)) webApp.requestFullscreen?.();
+        webApp.disableVerticalSwipes?.();
+      } catch {}
+    };
 
     const apply = () => {
-      const webApp = window.Telegram?.WebApp;
       applyInsets('tg-safe', webApp?.safeAreaInset);
       applyInsets('tg-content-safe', webApp?.contentSafeAreaInset);
+      prepare();
     };
 
     apply();
-    const webApp = window.Telegram?.WebApp;
-    webApp?.onEvent('safeAreaChanged', apply);
-    webApp?.onEvent('contentSafeAreaChanged', apply);
-    webApp?.onEvent('viewportChanged', apply);
+    const timers = [120, 300, 700].map(delay => window.setTimeout(apply, delay));
+    webApp.onEvent('safeAreaChanged', apply);
+    webApp.onEvent('contentSafeAreaChanged', apply);
+    webApp.onEvent('viewportChanged', apply);
 
     return () => {
-      webApp?.offEvent('safeAreaChanged', apply);
-      webApp?.offEvent('contentSafeAreaChanged', apply);
-      webApp?.offEvent('viewportChanged', apply);
+      timers.forEach(window.clearTimeout);
+      webApp.offEvent('safeAreaChanged', apply);
+      webApp.offEvent('contentSafeAreaChanged', apply);
+      webApp.offEvent('viewportChanged', apply);
     };
   }, []);
 
