@@ -11,14 +11,15 @@
   <style>
     :root { --tg-content-safe-top:0px; --tg-content-safe-bottom:0px; --tg-content-safe-left:0px; --tg-content-safe-right:0px; color:#111; background:#fff; font-family:'Merriweather', Georgia, 'Times New Roman', serif; }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100svh; padding:var(--tg-content-safe-top) var(--tg-content-safe-right) var(--tg-content-safe-bottom) var(--tg-content-safe-left); display:grid; place-items:center; }
+    html, body { height:100%; overflow:hidden; }
+    body { margin:0; height:100svh; padding:calc(40px + var(--tg-content-safe-top)) var(--tg-content-safe-right) var(--tg-content-safe-bottom) var(--tg-content-safe-left); display:grid; place-items:center; }
     button { font:inherit; }
     .app { position:relative; width:min(100%,450px); height:min(100%,852px); min-height:670px; overflow:hidden; display:flex; flex-direction:column; background:#fff; border-radius:48px; }
-    .header { height:116px; flex:none; position:relative; padding:16px; display:flex; justify-content:flex-end; align-items:flex-start; z-index:2; }
+    .header { height:76px; flex:none; position:relative; padding:16px; display:flex; justify-content:flex-end; align-items:flex-start; z-index:2; }
     .exit { position:relative; z-index:1; border:0; width:44px; height:44px; padding:0; border-radius:50%; background:rgba(255,255,255,.56); cursor:pointer; display:grid; place-items:center; }
     .exit img { width:44px; height:44px; }
-    h1 { position:absolute; inset:62px 0 auto; margin:0; pointer-events:none; text-align:center; font-size:20px; line-height:29px; font-weight:700; }
-    .opponent { position:absolute; top:99px; left:50%; transform:translateX(-50%); display:flex; gap:6px; align-items:center; padding:4px 12px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font-size:12px; font-weight:600; white-space:nowrap; }
+    h1 { position:absolute; inset:22px 0 auto; margin:0; pointer-events:none; text-align:center; font-size:20px; line-height:29px; font-weight:700; }
+    .opponent { position:absolute; top:59px; left:50%; transform:translateX(-50%); display:flex; gap:6px; align-items:center; padding:4px 12px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font-size:12px; font-weight:600; white-space:nowrap; }
     .opponent img { width:20px; height:20px; border-radius:50%; object-fit:cover; }
     .game { display:flex; flex:1; min-height:0; flex-direction:column; align-items:center; justify-content:flex-end; gap:32px; }
     .turn { flex:1; display:grid; place-items:center; width:100%; padding-top:18px; color:#004cff; font-size:40px; font-weight:900; line-height:1.2; }
@@ -32,7 +33,7 @@
     .hole { position:absolute; border-radius:50%; background:#fff; }
     .body-cell, .body-gap { position:absolute; background:#ececec; }
     .body-cell { -webkit-mask:radial-gradient(circle closest-side at 50% 50%, transparent 0 100%, #000 100%); mask:radial-gradient(circle closest-side at 50% 50%, transparent 0 100%, #000 100%); }
-    .board { position:relative; z-index:3; display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
+    .board { position:relative; z-index:3; display:grid; grid-template-columns:repeat(7,1fr); gap:8px; touch-action:manipulation; }
     .guide { display:none; }
     .cell { aspect-ratio:1; min-width:0; border-radius:50%; background:transparent; pointer-events:none; transition:background .16s ease; }
     .cell.blue { background:#004cff; }
@@ -51,7 +52,7 @@
     .turn.dark { color:#111; }
     .falling-chip.blue { background:#004cff; } .falling-chip.black { background:#111; }
     @media (max-width:450px) { .app { border-radius:0; } }
-    @media (max-height:730px) { .app { min-height:100svh; } .turn { font-size:34px; } .game { gap:16px; } .board-sheet { padding-bottom:18px; } }
+    @media (max-height:730px) { .app { min-height:100%; } .turn { font-size:34px; } .game { gap:16px; } .board-sheet { padding-bottom:18px; } }
   </style>
 </head>
 <body>
@@ -99,6 +100,14 @@
       }
       const thumb = document.createElement('span'); thumb.className = 'slider-thumb'; thumb.setAttribute('aria-hidden', 'true'); controls.append(thumb); updateSelection();
       controls.onpointerdown = beginSlide;
+      boardEl.onclick = event => {
+        if (locked) return;
+        const rect = boardEl.getBoundingClientRect();
+        const column = Math.max(0, Math.min(cols - 1, Math.floor((event.clientX - rect.left) / (rect.width / cols))));
+        if (firstOpen(column) === -1) return;
+        selected = column;
+        play(column, 'blue');
+      };
     }
     function buildBoardBody() {
       holes.replaceChildren(); bodyLayer.replaceChildren();
