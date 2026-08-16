@@ -92,7 +92,7 @@
     const emptyBoard = () => Array.from({length: rows}, () => Array(cols).fill(null));
     const SUPABASE_URL = 'https://lygzlzkzkcexmlutnnob.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_z2hW6JrKlQ4EZg3W-SYrLA_Voq2WovC';
-    const supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
     let board = emptyBoard();
     let selected = 4, locked = false, timer;
     const boardEl = document.querySelector('#board'), controls = document.querySelector('#controls');
@@ -290,10 +290,10 @@
     restart.onclick = () => { if (isMultiplayer()) return show('Для новой партии создай новое приглашение'); board = emptyBoard(); selected = 4; locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); robotPreview.classList.remove('show'); controls.classList.remove('hidden'); restart.classList.remove('show'); message.classList.remove('visible'); render(); };
 
     async function ensureMultiplayerUser() {
-      if (!supabase) throw new Error('Не удалось подключиться к серверу игры');
-      let { data: { session } } = await supabase.auth.getSession();
+      if (!supabaseClient) throw new Error('Не удалось подключиться к серверу игры');
+      let { data: { session } } = await supabaseClient.auth.getSession();
       if (!session) {
-        const { data, error } = await supabase.auth.signInAnonymously();
+        const { data, error } = await supabaseClient.auth.signInAnonymously();
         if (error) throw error;
         session = data.session;
       }
@@ -311,15 +311,15 @@
     }
     function subscribeToRoom(id) {
       roomChannel?.unsubscribe();
-      roomChannel = supabase.channel(`connect-four-${id}`).on('postgres_changes', { event:'UPDATE', schema:'public', table:'connect_four_rooms', filter:`id=eq.${id}` }, payload => setRoom(payload.new)).subscribe();
+      roomChannel = supabaseClient.channel(`connect-four-${id}`).on('postgres_changes', { event:'UPDATE', schema:'public', table:'connect_four_rooms', filter:`id=eq.${id}` }, payload => setRoom(payload.new)).subscribe();
     }
     async function openRoom(id) {
       await ensureMultiplayerUser();
-      const { data: existing, error } = await supabase.from('connect_four_rooms').select('*').eq('id', id).single();
+      const { data: existing, error } = await supabaseClient.from('connect_four_rooms').select('*').eq('id', id).single();
       if (error) throw new Error('Приглашение больше не действует');
       let room = existing;
       if (room.blue_player !== multiplayerUser.id && room.black_player !== multiplayerUser.id) {
-        const joined = await supabase.rpc('join_connect_four_room', { room_id:id });
+        const joined = await supabaseClient.rpc('join_connect_four_room', { room_id:id });
         if (joined.error) throw joined.error;
         room = joined.data;
       }
@@ -329,7 +329,7 @@
       try {
         await ensureMultiplayerUser();
         if (!multiplayerRoom) {
-          const { data, error } = await supabase.rpc('create_connect_four_room');
+          const { data, error } = await supabaseClient.rpc('create_connect_four_room');
           if (error) throw error;
           const url = new URL(location.href); url.searchParams.set('room', data.id); history.replaceState(null, '', url);
           subscribeToRoom(data.id); setRoom(data);
@@ -344,7 +344,7 @@
       const r = firstOpen(c); locked = true; clearSelectionVisuals();
       try {
         await animateDrop(c, r, color, color === 'black' ? robotPreview.getBoundingClientRect() : preview.getBoundingClientRect());
-        const { data, error } = await supabase.rpc('make_connect_four_move', { room_id:multiplayerRoom.id, selected_column:c });
+        const { data, error } = await supabaseClient.rpc('make_connect_four_move', { room_id:multiplayerRoom.id, selected_column:c });
         if (error) throw error;
         setRoom(data);
       } catch (error) { locked = false; show(error.message || 'Ход не прошёл'); render(); }
