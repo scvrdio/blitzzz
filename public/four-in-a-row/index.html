@@ -229,18 +229,24 @@
       preview.classList.remove('show'); robotPreview.classList.remove('show');
       Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint', 'hint-black'));
     }
+    const waitForFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+    const wait = duration => new Promise(resolve => setTimeout(resolve, duration));
+    async function moveSelectionThroughColumns(column) {
+      const direction = Math.sign(column - selected);
+      while (direction && selected !== column) {
+        selected += direction;
+        window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
+        updateSelection();
+        await waitForFrame();
+        await wait(50);
+      }
+    }
     async function playClickedColumn(column, color) {
       if (locked || isColumnTransitioning) return;
       window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
       isColumnTransitioning = true;
       try {
-        const direction = Math.sign(column - selected);
-        while (direction && selected !== column) {
-          selected += direction;
-          window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
-          updateSelection();
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
+        await moveSelectionThroughColumns(column);
       } finally {
         isColumnTransitioning = false;
       }
