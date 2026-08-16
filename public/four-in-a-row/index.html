@@ -31,7 +31,7 @@
     .game { display:flex; flex:1; min-height:0; flex-direction:column; align-items:center; justify-content:flex-end; gap:32px; }
     .turn { flex:1; display:grid; place-items:center; width:100%; padding-top:18px; color:#004cff; font-size:32px; font-weight:900; line-height:1.2; }
     .drop-zone { height:48px; flex:none; width:100%; position:relative; }
-    .chip-preview { --chip:#004cff; --trail:rgba(0,76,255,.3); position:absolute; z-index:1; opacity:0; border-radius:999px 999px 0 0; background:var(--trail); pointer-events:none; transition:opacity .15s ease; }
+    .chip-preview { --chip:#004cff; --trail:rgba(0,76,255,.3); position:absolute; z-index:1; opacity:0; border-radius:999px 999px 0 0; background:var(--trail); pointer-events:none; transition:opacity .12s ease, left .06s linear; }
     .chip-preview::after { content:''; position:absolute; top:2px; left:2px; width:calc(100% - 4px); aspect-ratio:1; border-radius:50%; background:var(--chip); }
     .chip-preview.show { opacity:1; }
     .robot-preview { --chip:#111; --trail:rgba(17,17,17,.3); transition:opacity .14s ease; }
@@ -109,7 +109,7 @@
     const holes = document.querySelector('#holes'), bodyLayer = document.querySelector('#body-layer');
     const opponent = document.querySelector('#opponent'), opponentName = document.querySelector('#opponent-name'), opponentAvatar = document.querySelector('#opponent-avatar');
     const invite = document.querySelector('#invite');
-    let multiplayerRoom = null, multiplayerUser = null, roomChannel = null, roomSyncTimer = null, pendingLocalMove = null, remoteMoveInProgress = false, lastPreviewSent = null;
+    let multiplayerRoom = null, multiplayerUser = null, roomChannel = null, roomSyncTimer = null, pendingLocalMove = null, remoteMoveInProgress = false, lastPreviewSent = null, remotePreviewColumn = null;
     const urlParams = new URLSearchParams(location.search);
     const telegramStartParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || urlParams.get('tgWebAppStartParam');
     const roomId = urlParams.get('room') || (telegramStartParam?.startsWith('game_') ? telegramStartParam.slice(5) : null);
@@ -367,7 +367,7 @@
       chip.style.setProperty('--chip', color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
       const column = isRemotePreview ? room.preview_column : selected;
-      otherChip.classList.remove('show'); positionChipPreview(chip, column); chip.classList.add('show');
+      otherChip.classList.remove('show'); positionChipPreview(chip, column); chip.classList.add('show'); remotePreviewColumn = column;
     }
     async function showRemoteMove(room) {
       const change = boardChange(board, room.board);
@@ -375,12 +375,17 @@
       if (pendingLocalMove && pendingLocalMove.r === change.r && pendingLocalMove.c === change.c && pendingLocalMove.color === change.color) return;
       remoteMoveInProgress = true; locked = true; controls.classList.add('disabled');
       const chip = change.color === 'blue' ? preview : robotPreview;
-      const sourceRect = chip.classList.contains('show') ? chip.getBoundingClientRect() : null;
-      clearSelectionVisuals();
       chip.style.setProperty('--chip', change.color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', change.color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
-      if (!sourceRect) { positionChipPreview(chip, room.preview_column ?? change.c); chip.classList.add('show'); }
-      const dropSource = sourceRect || chip.getBoundingClientRect(); chip.classList.remove('show');
+      let column = Number.isInteger(remotePreviewColumn) ? remotePreviewColumn : selected;
+      positionChipPreview(chip, column); chip.classList.add('show');
+      const direction = Math.sign(change.c - column);
+      while (direction && column !== change.c) {
+        column += direction;
+        positionChipPreview(chip, column);
+        await new Promise(resolve => setTimeout(resolve, 55));
+      }
+      const dropSource = chip.getBoundingClientRect(); chip.classList.remove('show'); remotePreviewColumn = null;
       await animateDrop(change.c, change.r, change.color, dropSource);
       remoteMoveInProgress = false; setRoom(room);
     }
@@ -391,7 +396,7 @@
       roomSyncTimer = setInterval(async () => {
         const { data } = await supabaseClient.from('connect_four_rooms').select('*').eq('id', id).single();
         if (data && data.updated_at !== multiplayerRoom?.updated_at) showRemoteMove(data);
-      }, 350);
+      }, 100);
     }
     async function openRoom(id) {
       await ensureMultiplayerUser();
