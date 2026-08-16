@@ -232,14 +232,15 @@
     }
     async function playClickedColumn(column, color) {
       if (locked || isColumnTransitioning) return;
-      if (column !== selected) {
-        isColumnTransitioning = true;
+      isColumnTransitioning = true;
+      try {
         const direction = Math.sign(column - selected);
         while (direction && selected !== column) {
           selected += direction;
           updateSelection();
-          await new Promise(resolve => setTimeout(resolve, 55));
+          await new Promise(resolve => setTimeout(resolve, 90));
         }
+      } finally {
         isColumnTransitioning = false;
       }
       play(column, color);
@@ -351,6 +352,7 @@
       else opponentAvatar.removeAttribute('src');
     }
     function setRoom(room) {
+      if (multiplayerRoom?.updated_at && room.updated_at && Date.parse(room.updated_at) < Date.parse(multiplayerRoom.updated_at)) return;
       multiplayerRoom = room;
       board = room.board;
       const chip = myChip();
@@ -373,11 +375,6 @@
       for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (previous[r]?.[c] !== next[r]?.[c] && next[r]?.[c]) return { r, c, color:next[r][c] };
       return null;
     }
-    function positionDropHint(column, color) {
-      Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint', 'hint-black'));
-      const row = firstOpen(column);
-      if (row >= 0) boardEl.children[row * cols + column].classList.add(color === 'black' ? 'hint-black' : 'hint');
-    }
     function showLiveOpponentPreview(room) {
       const isOpponentTurn = room.status === 'active' && room.turn !== myChip();
       if (!isOpponentTurn) return;
@@ -388,7 +385,6 @@
       chip.style.setProperty('--chip', color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
       const column = isRemotePreview ? room.preview_column : selected;
-      positionDropHint(column, color);
       otherChip.classList.remove('show'); positionChipPreview(chip, column); chip.classList.add('show'); remotePreviewColumn = column;
     }
     async function showRemoteMove(room) {
@@ -401,11 +397,10 @@
       chip.style.setProperty('--chip', change.color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', change.color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
       let column = Number.isInteger(remotePreviewColumn) ? remotePreviewColumn : selected;
-      positionDropHint(column, change.color); positionChipPreview(chip, column); chip.classList.add('show');
+      positionChipPreview(chip, column); chip.classList.add('show');
       const direction = Math.sign(change.c - column);
       while (direction && column !== change.c) {
         column += direction;
-        positionDropHint(column, change.color);
         positionChipPreview(chip, column);
         await new Promise(resolve => setTimeout(resolve, 55));
       }
