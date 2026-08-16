@@ -36,6 +36,7 @@ export default function Home() {
   }, []);
 
   const showSoon = () => {
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
     setNotice(true);
     window.setTimeout(() => setNotice(false), 1800);
   };
@@ -47,7 +48,7 @@ export default function Home() {
         {profile && <p className="profile">{profile.photoUrl && <img src={profile.photoUrl} alt="" />}<span>{profile.name}</span></p>}
       </header>
       <section className="games" aria-label="Игры">
-        <a className="game-card" href="/four-in-a-row/index.html">
+        <a className="game-card" href="/four-in-a-row/index.html" onClick={() => window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light')}>
           <div className="copy"><h2>Четыре в ряд</h2><p>Собери четыре фишки в линию раньше соперника</p></div>
           {cells('connect', 42)}
         </a>
