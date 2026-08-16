@@ -20,8 +20,7 @@ export default function Home() {
       window.history.replaceState(null, '', '/');
       return;
     }
-    if (startParam?.startsWith('game_')) {
-      if (window.sessionStorage.getItem('dismissed-game-start-param') === startParam) return;
+    if (startParam?.startsWith('game_') && window.sessionStorage.getItem('dismissed-game-start-param') !== startParam) {
       window.location.replace(`/four-in-a-row/index.html?room=${encodeURIComponent(startParam.slice(5))}`);
       return;
     }
