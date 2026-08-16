@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet">
   <title>Четыре в ряд</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root { --tg-content-safe-top:0px; --tg-content-safe-bottom:0px; --tg-content-safe-left:0px; --tg-content-safe-right:0px; color:#111; background:#fff; font-family:'Merriweather', Georgia, 'Times New Roman', serif; }
     * { box-sizing:border-box; }
@@ -19,7 +20,9 @@
     .exit { position:relative; z-index:1; border:0; width:44px; height:44px; padding:0; border-radius:50%; background:rgba(255,255,255,.56); cursor:pointer; display:grid; place-items:center; }
     .exit img { width:44px; height:44px; }
     h1 { position:absolute; inset:22px 0 auto; margin:0; pointer-events:none; text-align:center; font-size:20px; line-height:29px; font-weight:700; }
-    .opponent { position:absolute; top:59px; left:50%; transform:translateX(-50%); display:flex; gap:6px; align-items:center; padding:4px 12px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font-size:12px; font-weight:600; white-space:nowrap; }
+    .opponent { position:absolute; top:59px; left:50%; transform:translateX(-50%); display:flex; gap:6px; align-items:center; padding:4px 12px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font:600 12px/16px 'Merriweather', Georgia, serif; white-space:nowrap; }
+    .invite { position:absolute; top:16px; left:16px; z-index:1; display:grid; place-items:center; width:48px; height:48px; padding:16px; border:0; border-radius:40px; background:#ececec; cursor:pointer; }
+    .invite img { width:16px; height:16px; }
     .game { display:flex; flex:1; min-height:0; flex-direction:column; align-items:center; justify-content:flex-end; gap:32px; }
     .turn { flex:1; display:grid; place-items:center; width:100%; padding-top:18px; color:#004cff; font-size:32px; font-weight:900; line-height:1.2; }
     .drop-zone { height:48px; flex:none; width:100%; position:relative; }
@@ -45,6 +48,7 @@
     .cell.win { outline:none; }
     .controls { height:56px; margin-top:32px; border-radius:999px; display:grid; grid-template-columns:repeat(7,1fr); align-items:center; position:relative; z-index:3; background:#fff; cursor:grab; touch-action:none; }
     .controls.hidden { display:none; }
+    .controls.black .slider-thumb, .controls.black .control.selected { background:#111; }
     .control { place-self:center; width:4px; height:4px; border-radius:50%; background:#b8b8b8; }
     .control.selected { background:#004cff; }
     .slider-thumb { position:absolute; z-index:1; top:16px; width:24px; height:24px; border:0; border-radius:50%; padding:0; background:#004cff; cursor:grab; touch-action:none; }
@@ -63,7 +67,8 @@
   <main class="app" aria-label="Игра Четыре в ряд">
     <header class="header">
       <h1>Четыре в ряд</h1>
-      <div class="opponent">Соперник Робот</div>
+      <button class="invite" id="invite" type="button" aria-label="Пригласить друга"><img src="assets/invite.svg" alt=""></button>
+      <div class="opponent" id="opponent">Соперник Робот</div>
       <a class="exit" href="/" aria-label="Вернуться на главную"><img src="assets/leave.svg" alt=""></a>
     </header>
     <section class="game">
@@ -84,13 +89,23 @@
   </main>
   <script>
     const rows = 6, cols = 7;
-    let board = Array.from({length: rows}, () => Array(cols).fill(null));
+    const emptyBoard = () => Array.from({length: rows}, () => Array(cols).fill(null));
+    const SUPABASE_URL = 'https://lygzlzkzkcexmlutnnob.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_z2hW6JrKlQ4EZg3W-SYrLA_Voq2WovC';
+    const supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let board = emptyBoard();
     let selected = 4, locked = false, timer;
     const boardEl = document.querySelector('#board'), controls = document.querySelector('#controls');
     const turn = document.querySelector('#turn'), preview = document.querySelector('#preview'), robotPreview = document.querySelector('#robot-preview'), restart = document.querySelector('#restart'), message = document.querySelector('#message');
     const guide = document.querySelector('#guide'), boardSheet = document.querySelector('.board-sheet');
     const dropZone = document.querySelector('.drop-zone');
     const holes = document.querySelector('#holes'), bodyLayer = document.querySelector('#body-layer');
+    const opponent = document.querySelector('#opponent');
+    const invite = document.querySelector('#invite');
+    let multiplayerRoom = null, multiplayerUser = null, roomChannel = null;
+    const roomId = new URLSearchParams(location.search).get('room');
+    const isMultiplayer = () => Boolean(multiplayerRoom);
+    const myChip = () => multiplayerRoom?.blue_player === multiplayerUser?.id ? 'blue' : multiplayerRoom?.black_player === multiplayerUser?.id ? 'black' : null;
 
     function render() {
       boardEl.replaceChildren(); controls.replaceChildren();
@@ -106,6 +121,7 @@
       for (let c = 0; c < cols; c++) {
         const dot = document.createElement('span'); dot.className = `control ${c === selected ? 'selected' : ''}`; dot.dataset.column = c; controls.append(dot);
       }
+      controls.classList.toggle('black', isMultiplayer() && myChip() === 'black');
       const thumb = document.createElement('span'); thumb.className = 'slider-thumb'; thumb.setAttribute('aria-hidden', 'true'); controls.append(thumb); updateSelection();
       controls.onpointerdown = beginSlide;
       boardEl.onclick = event => {
@@ -114,7 +130,7 @@
         const column = Math.max(0, Math.min(cols - 1, Math.floor((event.clientX - rect.left) / (rect.width / cols))));
         if (firstOpen(column) === -1) return;
         selected = column;
-        play(column, 'blue');
+        play(column, isMultiplayer() ? myChip() : 'blue');
       };
     }
     function buildBoardBody() {
@@ -168,8 +184,10 @@
     }
     function positionPreview() {
       const targetRow = firstOpen(selected);
-      if (targetRow < 0 || locked) { preview.classList.remove('show'); return; }
-      positionChipPreview(preview, selected); preview.classList.add('show');
+      const chip = isMultiplayer() && myChip() === 'black' ? robotPreview : preview;
+      const otherChip = chip === preview ? robotPreview : preview;
+      if (targetRow < 0 || locked) { chip.classList.remove('show'); otherChip.classList.remove('show'); return; }
+      positionChipPreview(chip, selected); otherChip.classList.remove('show'); chip.classList.add('show');
     }
     function positionChipPreview(chip, c) {
       const target = boardEl.children[c]; if (!target) return;
@@ -193,7 +211,7 @@
       positionPreview();
     }
     function clearSelectionVisuals() {
-      preview.classList.remove('show');
+      preview.classList.remove('show'); robotPreview.classList.remove('show');
       Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint'));
     }
     function beginSlide(event) {
@@ -207,13 +225,14 @@
       const release = pointer => {
         if (pointer.pointerId !== event.pointerId) return;
         move(pointer); thumb.releasePointerCapture(pointer.pointerId); thumb.removeEventListener('pointermove', move); thumb.removeEventListener('pointerup', release); thumb.removeEventListener('pointercancel', cancel);
-        if (firstOpen(selected) !== -1) play(selected, 'blue');
+        if (firstOpen(selected) !== -1) play(selected, isMultiplayer() ? myChip() : 'blue');
       };
       const cancel = pointer => { if (pointer.pointerId === event.pointerId) { thumb.removeEventListener('pointermove', move); thumb.removeEventListener('pointerup', release); thumb.removeEventListener('pointercancel', cancel); } };
       thumb.addEventListener('pointermove', move); thumb.addEventListener('pointerup', release); thumb.addEventListener('pointercancel', cancel);
     }
     function show(text) { message.textContent = text; message.classList.add('visible'); clearTimeout(timer); timer = setTimeout(() => message.classList.remove('visible'), 2200); }
     async function play(c, color, sourceRect) {
+      if (isMultiplayer()) return playMultiplayer(c, color);
       if (locked || firstOpen(c) < 0 || color === 'blue' && turn.textContent !== 'Твой ход') return;
       const r = firstOpen(c); locked = true; clearSelectionVisuals();
       await animateDrop(c, r, color, sourceRect); board[r][c] = color; render();
@@ -268,7 +287,69 @@
       }
     }
     function finish(color, cells) { locked = true; if (cells) cells.forEach(([r,c]) => boardEl.children[r * cols + c].classList.add('win')); turn.textContent = color === 'blue' ? 'Победа' : color === 'black' ? 'Поражение' : 'Ничья'; turn.classList.toggle('dark', color === 'black'); controls.classList.add('hidden'); restart.classList.add('show'); show(turn.textContent); }
-    restart.onclick = () => { board = Array.from({length: rows}, () => Array(cols).fill(null)); selected = 4; locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); robotPreview.classList.remove('show'); controls.classList.remove('hidden'); restart.classList.remove('show'); message.classList.remove('visible'); render(); };
+    restart.onclick = () => { if (isMultiplayer()) return show('Для новой партии создай новое приглашение'); board = emptyBoard(); selected = 4; locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); robotPreview.classList.remove('show'); controls.classList.remove('hidden'); restart.classList.remove('show'); message.classList.remove('visible'); render(); };
+
+    async function ensureMultiplayerUser() {
+      if (!supabase) throw new Error('Не удалось подключиться к серверу игры');
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) throw error;
+        session = data.session;
+      }
+      multiplayerUser = session.user;
+    }
+    function setRoom(room) {
+      multiplayerRoom = room;
+      board = room.board;
+      const chip = myChip();
+      opponent.textContent = room.status === 'waiting' ? 'Ждём соперника' : 'Соперник онлайн';
+      if (room.status === 'waiting') { locked = true; turn.textContent = 'Ждём соперника'; turn.classList.add('dark'); controls.classList.add('hidden'); }
+      else if (room.status === 'finished') { finish(room.winner === chip ? 'blue' : room.winner === 'draw' ? null : 'black'); }
+      else { locked = room.turn !== chip; turn.textContent = locked ? 'Ход соперника' : 'Твой ход'; turn.classList.toggle('dark', locked); controls.classList.toggle('hidden', locked); }
+      render();
+    }
+    function subscribeToRoom(id) {
+      roomChannel?.unsubscribe();
+      roomChannel = supabase.channel(`connect-four-${id}`).on('postgres_changes', { event:'UPDATE', schema:'public', table:'connect_four_rooms', filter:`id=eq.${id}` }, payload => setRoom(payload.new)).subscribe();
+    }
+    async function openRoom(id) {
+      await ensureMultiplayerUser();
+      const { data: existing, error } = await supabase.from('connect_four_rooms').select('*').eq('id', id).single();
+      if (error) throw new Error('Приглашение больше не действует');
+      let room = existing;
+      if (room.blue_player !== multiplayerUser.id && room.black_player !== multiplayerUser.id) {
+        const joined = await supabase.rpc('join_connect_four_room', { room_id:id });
+        if (joined.error) throw joined.error;
+        room = joined.data;
+      }
+      subscribeToRoom(id); setRoom(room);
+    }
+    async function createInvite() {
+      try {
+        await ensureMultiplayerUser();
+        if (!multiplayerRoom) {
+          const { data, error } = await supabase.rpc('create_connect_four_room');
+          if (error) throw error;
+          const url = new URL(location.href); url.searchParams.set('room', data.id); history.replaceState(null, '', url);
+          subscribeToRoom(data.id); setRoom(data);
+        }
+        const url = location.href;
+        if (navigator.share) await navigator.share({ title:'Четыре в ряд', text:'Сыграем в Четыре в ряд?', url });
+        else { await navigator.clipboard?.writeText(url); show('Ссылка-приглашение скопирована'); }
+      } catch (error) { show(error.message || 'Не удалось создать приглашение'); }
+    }
+    async function playMultiplayer(c, color) {
+      if (locked || color !== myChip() || multiplayerRoom.turn !== color || firstOpen(c) < 0) return;
+      const r = firstOpen(c); locked = true; clearSelectionVisuals();
+      try {
+        await animateDrop(c, r, color, color === 'black' ? robotPreview.getBoundingClientRect() : preview.getBoundingClientRect());
+        const { data, error } = await supabase.rpc('make_connect_four_move', { room_id:multiplayerRoom.id, selected_column:c });
+        if (error) throw error;
+        setRoom(data);
+      } catch (error) { locked = false; show(error.message || 'Ход не прошёл'); render(); }
+    }
+    invite.onclick = createInvite;
     function applyTelegramSafeArea() {
       const tg = window.Telegram?.WebApp;
       if (!tg) return;
@@ -278,6 +359,7 @@
     }
     applyTelegramSafeArea();
     render();
+    if (roomId) openRoom(roomId).catch(error => { show(error.message || 'Не удалось открыть игру'); opponent.textContent = 'Соперник Робот'; });
   </script>
 </body>
 </html>
