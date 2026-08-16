@@ -25,10 +25,15 @@ export default function Home() {
       window.location.replace(`/four-in-a-row/index.html?room=${encodeURIComponent(startParam.slice(5))}`);
       return;
     }
-    const user = window.Telegram?.WebApp.initDataUnsafe.user;
-    if (!user) return;
-    const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || '';
-    if (name) setProfile({ name, photoUrl: user.photo_url });
+    const syncProfile = () => {
+      const user = window.Telegram?.WebApp.initDataUnsafe.user;
+      if (!user) return;
+      const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || '';
+      if (name) setProfile({ name, photoUrl: user.photo_url });
+    };
+    syncProfile();
+    const timers = [120, 300, 700].map(delay => window.setTimeout(syncProfile, delay));
+    return () => timers.forEach(window.clearTimeout);
   }, []);
 
   const showSoon = () => {
