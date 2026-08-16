@@ -247,6 +247,7 @@
       isColumnTransitioning = true;
       try {
         await moveSelectionThroughColumns(column);
+        await wait(120);
       } finally {
         isColumnTransitioning = false;
       }
@@ -311,10 +312,10 @@
       chip.style.left = `${targetRect.left - sheetRect.left}px`; chip.style.top = `${previewRect.top - sheetRect.top + 2}px`;
       boardSheet.append(chip); await new Promise(requestAnimationFrame);
       const start = Number.parseFloat(chip.style.top), distance = targetRect.top - sheetRect.top - start;
-      const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : 500;
+      const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : 480;
       const animation = chip.animate([
         { transform:'translateY(0)' },
-        { transform:'translateY(-16px)', offset:.11, easing:'cubic-bezier(.2,0,.2,1)' },
+        { transform:'translateY(-16px)', offset:.2, easing:'cubic-bezier(.2,0,.2,1)' },
         { transform:`translateY(${distance}px)`, offset:1, easing:'cubic-bezier(.16,.72,.28,1)' }
       ], { duration, fill:'forwards' });
       await animation.finished.catch(() => undefined); window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('medium'); chip.remove();
@@ -400,7 +401,12 @@
     async function showRemoteMove(room) {
       const change = boardChange(board, room.board);
       if (remoteMoveInProgress) return;
-      if (!change) return setRoom(room);
+      if (!change) {
+        // Our own preview updates arrive back from Supabase while the chip is moving.
+        // Keep the room data fresh, but don't rebuild the board and drop animation frames.
+        if (isColumnTransitioning && room.turn === myChip()) { multiplayerRoom = room; return; }
+        return setRoom(room);
+      }
       if (pendingLocalMove && pendingLocalMove.r === change.r && pendingLocalMove.c === change.c && pendingLocalMove.color === change.color) return;
       remoteMoveInProgress = true; locked = true; controls.classList.add('disabled');
       const chip = change.color === 'blue' ? preview : robotPreview;
