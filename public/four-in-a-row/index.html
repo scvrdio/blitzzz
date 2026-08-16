@@ -62,7 +62,7 @@
     .restart.show { display:inline-flex; }
     .exit:active, .invite:active, .exit.is-pressed, .invite.is-pressed { transform:scale(.9); }
     .restart:active, .restart.is-pressed { transform:translateX(-50%) scale(.92); }
-    .board-sheet { flex:none; position:relative; width:100%; border-top:1px solid #dfdfdf; border-radius:40px 40px 0 0; background:#ececec; padding:16px 16px 64px; }
+    .board-sheet { flex:none; position:relative; width:100%; border-radius:40px 40px 0 0; background:#ececec; padding:16px 16px 64px; }
     .hole-layer, .body-layer { position:absolute; inset:0; pointer-events:none; }
     .hole-layer { z-index:0; } .body-layer { z-index:2; overflow:hidden; border-radius:40px 40px 0 0; }
     .hole { position:absolute; border-radius:50%; background:#fff; }
@@ -80,7 +80,7 @@
     .controls.hidden { display:none; }
     .controls.disabled { cursor:default; opacity:.5; }
     .controls.black .slider-thumb, .controls.black .control.selected { background:#111; }
-    .control { place-self:center; width:4px; height:4px; border-radius:50%; background:#b8b8b8; }
+    .control { place-self:center; width:4px; height:4px; border-radius:50%; background:#ececec; }
     .control.selected { background:#004cff; }
     .slider-thumb { position:absolute; z-index:1; top:16px; width:24px; height:24px; border:0; border-radius:50%; padding:0; background:#004cff; cursor:grab; touch-action:none; }
     .slider-thumb:active { cursor:grabbing; }
