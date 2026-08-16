@@ -101,8 +101,12 @@
     const SUPABASE_KEY = 'sb_publishable_z2hW6JrKlQ4EZg3W-SYrLA_Voq2WovC';
     const TELEGRAM_BOT_USERNAME = 'blitzzzgames_bot';
     const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const chipSound = new Audio('assets/quiet-banging.mp3');
-    chipSound.preload = 'auto'; chipSound.volume = .7;
+    const chipSounds = Array.from({ length: 14 }, () => {
+      const sound = new Audio('assets/quiet-banging.mp3');
+      sound.preload = 'auto'; sound.volume = .7;
+      return sound;
+    });
+    let chipSoundIndex = 0;
     let board = emptyBoard();
     let selected = 4, locked = false, isColumnTransitioning = false, timer;
     const boardEl = document.querySelector('#board'), controls = document.querySelector('#controls');
@@ -121,8 +125,10 @@
     const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
     const localProfile = { name: telegramUser ? [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') : 'Игрок', avatar: telegramUser?.photo_url || null };
     function playChipSound() {
-      chipSound.currentTime = 0;
-      chipSound.play().catch(() => undefined);
+      const sound = chipSounds[chipSoundIndex];
+      chipSoundIndex = (chipSoundIndex + 1) % chipSounds.length;
+      sound.currentTime = 0;
+      sound.play().catch(() => undefined);
     }
 
     function render() {
@@ -245,6 +251,7 @@
         while (direction && selected !== column) {
           selected += direction;
           playChipSound();
+          window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
           updateSelection();
           await new Promise(resolve => setTimeout(resolve, 50));
         }

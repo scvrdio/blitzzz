@@ -9,11 +9,26 @@ export const metadata: Metadata = {
   description: 'Telegram Mini App',
 };
 
+const initialTelegramLayout = `
+  (() => {
+    const root = document.documentElement;
+    const webApp = window.Telegram?.WebApp;
+    const inset = webApp?.contentSafeAreaInset;
+    if (inset) {
+      for (const side of ['top', 'bottom', 'left', 'right']) {
+        root.style.setProperty('--tg-content-safe-' + side, Math.max(0, Math.floor(inset[side] || 0)) + 'px');
+      }
+    }
+    root.classList.add('tg-layout-ready');
+  })();
+`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru" suppressHydrationWarning>
       <body>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+        <Script id="telegram-initial-layout" strategy="beforeInteractive">{initialTelegramLayout}</Script>
         <TelegramBoot />
         <TelegramAuthProvider>{children}</TelegramAuthProvider>
       </body>
