@@ -95,6 +95,7 @@
     const emptyBoard = () => Array.from({length: rows}, () => Array(cols).fill(null));
     const SUPABASE_URL = 'https://lygzlzkzkcexmlutnnob.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_z2hW6JrKlQ4EZg3W-SYrLA_Voq2WovC';
+    const TELEGRAM_BOT_USERNAME = 'blitzzzgames_bot';
     const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
     let board = emptyBoard();
     let selected = 4, locked = false, timer;
@@ -106,7 +107,9 @@
     const opponent = document.querySelector('#opponent'), opponentName = document.querySelector('#opponent-name'), opponentAvatar = document.querySelector('#opponent-avatar');
     const invite = document.querySelector('#invite');
     let multiplayerRoom = null, multiplayerUser = null, roomChannel = null, pendingLocalMove = null, remoteMoveInProgress = false;
-    const roomId = new URLSearchParams(location.search).get('room');
+    const urlParams = new URLSearchParams(location.search);
+    const telegramStartParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || urlParams.get('tgWebAppStartParam');
+    const roomId = urlParams.get('room') || (telegramStartParam?.startsWith('game_') ? telegramStartParam.slice(5) : null);
     const isMultiplayer = () => Boolean(multiplayerRoom);
     const myChip = () => multiplayerRoom?.blue_player === multiplayerUser?.id ? 'blue' : multiplayerRoom?.black_player === multiplayerUser?.id ? 'black' : null;
     const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
@@ -369,7 +372,7 @@
           const url = new URL(location.href); url.searchParams.set('room', data.id); history.replaceState(null, '', url);
           subscribeToRoom(data.id); setRoom(data);
         }
-        const url = location.href;
+        const url = `https://t.me/${TELEGRAM_BOT_USERNAME}?startapp=game_${multiplayerRoom.id}`;
         if (navigator.share) await navigator.share({ title:'Четыре в ряд', text:'Сыграем в Четыре в ряд?', url });
         else { await navigator.clipboard?.writeText(url); show('Ссылка-приглашение скопирована'); }
       } catch (error) { show(error.message || 'Не удалось создать приглашение'); }
