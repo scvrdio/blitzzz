@@ -102,7 +102,7 @@
     const TELEGRAM_BOT_USERNAME = 'blitzzzgames_bot';
     const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
     let board = emptyBoard();
-    let selected = 4, locked = false, isColumnTransitioning = false, timer;
+    let selected = 3, locked = false, isColumnTransitioning = false, timer;
     const boardEl = document.querySelector('#board'), controls = document.querySelector('#controls');
     const turn = document.querySelector('#turn'), preview = document.querySelector('#preview'), robotPreview = document.querySelector('#robot-preview'), restart = document.querySelector('#restart'), message = document.querySelector('#message');
     const guide = document.querySelector('#guide'), boardSheet = document.querySelector('.board-sheet');
@@ -211,7 +211,7 @@
       chip.style.width = `${visualWidth}px`;
       chip.style.height = `${sheetRect.height - top}px`;
     }
-    function updateSelection() {
+    function updateSelection(publishPreview = true) {
       const openRow = firstOpen(selected);
       Array.from(boardEl.children).forEach((cell, index) => {
         const r = Math.floor(index / cols), c = index % cols;
@@ -223,7 +223,7 @@
       const thumb = controls.querySelector('.slider-thumb');
       if (thumb) { const width = controls.getBoundingClientRect().width; thumb.style.left = `${selected * (width / cols) + width / (cols * 2) - 12}px`; }
       positionPreview();
-      publishLivePreview();
+      if (publishPreview) publishLivePreview();
     }
     function clearSelectionVisuals() {
       preview.classList.remove('show'); robotPreview.classList.remove('show');
@@ -236,8 +236,9 @@
       while (direction && selected !== column) {
         selected += direction;
         window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
-        updateSelection();
+        updateSelection(false);
         await waitForFrame();
+        publishLivePreview();
         await wait(50);
       }
     }
@@ -247,7 +248,7 @@
       isColumnTransitioning = true;
       try {
         await moveSelectionThroughColumns(column);
-        await wait(120);
+        await wait(200);
       } finally {
         isColumnTransitioning = false;
       }
@@ -338,7 +339,7 @@
         } catch (error) { show(error.message || 'Не удалось начать новую игру'); }
         return;
       }
-      board = emptyBoard(); selected = 4; locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); robotPreview.classList.remove('show'); controls.classList.remove('hidden'); restart.classList.remove('show'); message.classList.remove('visible'); render();
+      board = emptyBoard(); selected = 3; locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); robotPreview.classList.remove('show'); controls.classList.remove('hidden'); restart.classList.remove('show'); message.classList.remove('visible'); render();
     };
 
     async function ensureMultiplayerUser() {
@@ -373,7 +374,7 @@
       else if (room.status === 'finished') { finish(room.winner === chip ? 'blue' : room.winner === 'draw' ? null : 'black'); }
       else {
         locked = room.turn !== chip;
-        if (!locked && firstOpen(selected) < 0) selected = availableColumns()[0] ?? selected;
+        if (!locked) selected = firstOpen(3) !== -1 ? 3 : availableColumns()[0] ?? 3;
         if (locked) lastPreviewSent = null;
         restart.classList.remove('show');
         turn.textContent = locked ? 'Ход соперника' : 'Твой ход'; turn.classList.toggle('dark', locked); controls.classList.remove('hidden'); controls.classList.toggle('disabled', locked);
@@ -468,11 +469,14 @@
         lastPreviewSent = null;
         const move = supabaseClient.rpc('make_connect_four_move', { room_id:multiplayerRoom.id, selected_column:c });
         await animateDrop(c, r, color, color === 'black' ? robotPreview.getBoundingClientRect() : preview.getBoundingClientRect());
+        board = board.map(row => row.slice());
+        board[r][c] = color;
+        render();
         const { data, error } = await move;
         if (error) throw error;
         pendingLocalMove = null;
         setRoom(data);
-      } catch (error) { pendingLocalMove = null; locked = false; show(error.message || 'Ход не прошёл'); render(); }
+      } catch (error) { pendingLocalMove = null; board = multiplayerRoom?.board?.map(row => row.slice()) || board; locked = false; show(error.message || 'Ход не прошёл'); render(); }
     }
     invite.onclick = createInvite;
     function applyTelegramSafeArea() {
@@ -491,7 +495,11 @@
     }
     applyTelegramSafeArea();
     render();
-    if (roomId) openRoom(roomId).catch(error => { show(error.message || 'Не удалось открыть игру'); setOpponent('Соперник Робот'); });
+    if (roomId) {
+      locked = true;
+      turn.textContent = 'Ход соперника'; turn.classList.add('dark'); controls.classList.add('disabled');
+      openRoom(roomId).catch(error => { show(error.message || 'Не удалось открыть игру'); setOpponent('Соперник Робот'); });
+    }
   </script>
 </body>
 </html>
