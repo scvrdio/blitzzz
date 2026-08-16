@@ -235,7 +235,7 @@
       chip.style.left = `${targetRect.left - sheetRect.left}px`; chip.style.top = `${previewRect.top - sheetRect.top + 2}px`;
       boardSheet.append(chip); await new Promise(requestAnimationFrame);
       const start = Number.parseFloat(chip.style.top), distance = targetRect.top - sheetRect.top - start;
-      const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : 600;
+      const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : 500;
       const animation = chip.animate([
         { transform:'translateY(0)' },
         { transform:'translateY(-16px)', offset:.11, easing:'cubic-bezier(.2,0,.2,1)' },
