@@ -27,7 +27,6 @@ export function TelegramBoot() {
         webApp.ready();
         webApp.expand();
         if (isMobile(webApp.platform)) webApp.requestFullscreen?.();
-        webApp.disableVerticalSwipes?.();
       } catch {}
     };
 

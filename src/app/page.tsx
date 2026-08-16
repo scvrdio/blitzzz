@@ -15,7 +15,13 @@ export default function Home() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const startParam = window.Telegram?.WebApp.initDataUnsafe.start_param || params.get('tgWebAppStartParam');
+    if (params.get('leave') === '1') {
+      if (startParam) window.sessionStorage.setItem('dismissed-game-start-param', startParam);
+      window.history.replaceState(null, '', '/');
+      return;
+    }
     if (startParam?.startsWith('game_')) {
+      if (window.sessionStorage.getItem('dismissed-game-start-param') === startParam) return;
       window.location.replace(`/four-in-a-row/index.html?room=${encodeURIComponent(startParam.slice(5))}`);
       return;
     }

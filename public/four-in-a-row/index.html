@@ -73,7 +73,7 @@
       <h1>Четыре в ряд</h1>
       <button class="invite" id="invite" type="button" aria-label="Пригласить друга"><img src="assets/invite.svg" alt=""></button>
       <div class="opponent" id="opponent"><img class="opponent-avatar" id="opponent-avatar" alt=""><span id="opponent-name">Соперник Робот</span></div>
-      <a class="exit" href="/" aria-label="Вернуться на главную"><img src="assets/leave.svg" alt=""></a>
+      <a class="exit" href="/?leave=1" aria-label="Вернуться на главную"><img src="assets/leave.svg" alt=""></a>
     </header>
     <section class="game">
       <div class="turn" id="turn" aria-live="polite">Твой ход</div>
@@ -107,7 +107,7 @@
     const holes = document.querySelector('#holes'), bodyLayer = document.querySelector('#body-layer');
     const opponent = document.querySelector('#opponent'), opponentName = document.querySelector('#opponent-name'), opponentAvatar = document.querySelector('#opponent-avatar');
     const invite = document.querySelector('#invite');
-    let multiplayerRoom = null, multiplayerUser = null, roomChannel = null, pendingLocalMove = null, remoteMoveInProgress = false, lastPreviewSent = null;
+    let multiplayerRoom = null, multiplayerUser = null, roomChannel = null, roomSyncTimer = null, pendingLocalMove = null, remoteMoveInProgress = false, lastPreviewSent = null;
     const urlParams = new URLSearchParams(location.search);
     const telegramStartParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || urlParams.get('tgWebAppStartParam');
     const roomId = urlParams.get('room') || (telegramStartParam?.startsWith('game_') ? telegramStartParam.slice(5) : null);
@@ -380,7 +380,12 @@
     }
     function subscribeToRoom(id) {
       roomChannel?.unsubscribe();
+      clearInterval(roomSyncTimer);
       roomChannel = supabaseClient.channel(`connect-four-${id}`).on('postgres_changes', { event:'UPDATE', schema:'public', table:'connect_four_rooms', filter:`id=eq.${id}` }, payload => showRemoteMove(payload.new)).subscribe();
+      roomSyncTimer = setInterval(async () => {
+        const { data } = await supabaseClient.from('connect_four_rooms').select('*').eq('id', id).single();
+        if (data && data.updated_at !== multiplayerRoom?.updated_at) showRemoteMove(data);
+      }, 350);
     }
     async function openRoom(id) {
       await ensureMultiplayerUser();
@@ -427,7 +432,13 @@
       const tg = window.Telegram?.WebApp;
       if (!tg) return;
       const set = (name, inset) => ['top', 'right', 'bottom', 'left'].forEach(side => document.documentElement.style.setProperty(`--${name}-${side}`, `${Math.max(0, Math.floor(inset?.[side] || 0))}px`));
-      const apply = () => { set('tg-content-safe', tg.contentSafeAreaInset); try { tg.expand(); tg.requestFullscreen?.(); tg.disableVerticalSwipes?.(); } catch {} };
+      const apply = () => {
+        set('tg-content-safe', tg.contentSafeAreaInset);
+        try {
+          tg.expand();
+          if (tg.platform === 'ios' || tg.platform === 'android') tg.requestFullscreen?.();
+        } catch {}
+      };
       try { tg.ready(); apply(); tg.onEvent?.('safeAreaChanged', apply); tg.onEvent?.('contentSafeAreaChanged', apply); tg.onEvent?.('viewportChanged', apply); [120, 300, 700].forEach(delay => setTimeout(apply, delay)); } catch {}
     }
     applyTelegramSafeArea();
