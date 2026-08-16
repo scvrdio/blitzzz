@@ -64,7 +64,7 @@ export default function Home() {
       </header>
       <section className="games" aria-label="Игры">
         <a className="game-card connect-card" href="/four-in-a-row/index.html" onClick={event => { event.preventDefault(); openGame(); }}>
-          <div className="copy"><h2>Четыре в ряд</h2><p>Собери четыре фишки в линию раньше соперника</p></div>
+          <div className="copy"><h2>Четыре в ряд</h2><p>Собери четыре фишки<br />в линию раньше соперника</p></div>
           {cells('connect', 42)}
         </a>
         <button className="game-card soon" onClick={showSoon}>
@@ -78,6 +78,9 @@ export default function Home() {
         </button>
         <button className="game-card soon" onClick={showSoon}>
           <div className="copy"><h2>Коридор</h2><p>Дойди до края поля первым,<br />задерживая противника стенами</p></div><span className="badge">скоро</span>
+        </button>
+        <button className="game-card soon" onClick={showSoon}>
+          <div className="copy"><h2>Чапаева</h2><p>Выбей фишки соперника<br />и дойди первым до края поля</p></div><span className="badge">скоро</span>
         </button>
       </section>
       <div className={`notice${notice ? ' visible' : ''}`} role="status">Игра появится скоро</div>
