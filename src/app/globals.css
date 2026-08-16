@@ -11,7 +11,7 @@ h1 { margin:0; font-size:20px; line-height:25px; font-weight:700; }
 .profile { display:flex; align-items:center; gap:6px; margin:0; padding:4px 12px 4px 4px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font-size:12px; font-weight:700; }
 .profile img { width:20px; height:20px; border-radius:50%; object-fit:cover; }
 .games { display:grid; gap:8px; }
-.game-card { width:100%; min-height:128px; display:flex; align-items:stretch; gap:16px; overflow:hidden; padding:16px; border:0; border-radius:24px; background:#ececec; color:inherit; font:inherit; text-align:left; text-decoration:none; cursor:pointer; transition:transform .18s cubic-bezier(.2,.8,.2,1); }
+.game-card { width:100%; min-height:128px; display:flex; align-items:stretch; gap:16px; overflow:hidden; padding:16px; border:0; border-radius:24px; background:#ececec; color:inherit; font:inherit; text-align:left; text-decoration:none; cursor:pointer; transition:transform .12s ease; }
 .game-card:active { transform:scale(.96); }
 .game-card:focus-visible { outline:3px solid #004cff; outline-offset:2px; }
 .copy { display:flex; flex:1; min-width:0; flex-direction:column; justify-content:center; gap:8px; }
