@@ -17,8 +17,6 @@ function isMobile(platform?: string) {
 export function TelegramBoot() {
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty('--tg-content-safe-top', '0px');
-    root.style.setProperty('--tg-content-safe-bottom', '0px');
     const webApp = window.Telegram?.WebApp;
     if (!webApp) {
       root.classList.add('tg-layout-ready');

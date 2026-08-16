@@ -39,8 +39,8 @@
     .robot-preview.show { opacity:1; }
     .restart { position:relative; z-index:3; left:50%; width:auto; height:56px; margin-top:32px; padding:0 16px; display:none; align-items:center; justify-content:center; border:0; border-radius:40px; background:#111; color:#f8f8f8; font:700 16px/20px 'Merriweather', Georgia, serif; cursor:pointer; transform:translateX(-50%); transition:transform .12s ease; }
     .restart.show { display:inline-flex; }
-    .exit:active, .invite:active, .exit.is-pressed, .invite.is-pressed { transform:scale(.94); }
-    .restart:active, .restart.is-pressed { transform:translateX(-50%) scale(.96); }
+    .exit:active, .invite:active, .exit.is-pressed, .invite.is-pressed { transform:scale(.9); }
+    .restart:active, .restart.is-pressed { transform:translateX(-50%) scale(.92); }
     .board-sheet { flex:none; position:relative; width:100%; border-top:1px solid #dfdfdf; border-radius:40px 40px 0 0; background:#ececec; padding:16px 16px 64px; }
     .hole-layer, .body-layer { position:absolute; inset:0; pointer-events:none; }
     .hole-layer { z-index:0; } .body-layer { z-index:2; overflow:hidden; border-radius:40px 40px 0 0; }
@@ -473,7 +473,11 @@
         else { await navigator.clipboard?.writeText(url); show('Ссылка-приглашение скопирована'); }
       } catch (error) { show(error.message || 'Не удалось создать приглашение'); }
     }
-    document.querySelector('.exit').addEventListener('click', () => window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light'));
+    document.querySelector('.exit').addEventListener('click', () => {
+      const inset = window.Telegram?.WebApp?.contentSafeAreaInset;
+      try { if (inset) window.sessionStorage.setItem('blitzzz-content-safe-inset', JSON.stringify(inset)); } catch {}
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
+    });
     [invite, restart, document.querySelector('.exit')].forEach(element => {
       const clear = () => element.classList.remove('is-pressed');
       element.addEventListener('pointerdown', () => element.classList.add('is-pressed'));

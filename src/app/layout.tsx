@@ -13,7 +13,9 @@ const initialTelegramLayout = `
   (() => {
     const root = document.documentElement;
     const webApp = window.Telegram?.WebApp;
-    const inset = webApp?.contentSafeAreaInset;
+    let cachedInset = null;
+    try { cachedInset = JSON.parse(window.sessionStorage.getItem('blitzzz-content-safe-inset') || 'null'); } catch {}
+    const inset = webApp?.contentSafeAreaInset || cachedInset;
     if (inset) {
       for (const side of ['top', 'bottom', 'left', 'right']) {
         root.style.setProperty('--tg-content-safe-' + side, Math.max(0, Math.floor(inset[side] || 0)) + 'px');
