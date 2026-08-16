@@ -11,18 +11,14 @@ const cells = (className: string, count: number) => (
 export default function Home() {
   const [notice, setNotice] = useState(false);
   const [profile, setProfile] = useState<{ name: string; photoUrl?: string } | null>(null);
+  const [gameUrl, setGameUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const startParam = window.Telegram?.WebApp.initDataUnsafe.start_param || params.get('tgWebAppStartParam');
-    const leavingRoom = params.get('leave') === '1';
-    if (leavingRoom) {
-      if (startParam) window.sessionStorage.setItem('dismissed-game-start-param', startParam);
+    if (startParam?.startsWith('game_')) {
+      setGameUrl(`/four-in-a-row/index.html?room=${encodeURIComponent(startParam.slice(5))}`);
       window.history.replaceState(null, '', '/');
-    }
-    if (!leavingRoom && startParam?.startsWith('game_') && window.sessionStorage.getItem('dismissed-game-start-param') !== startParam) {
-      window.location.replace(`/four-in-a-row/index.html?room=${encodeURIComponent(startParam.slice(5))}`);
-      return;
     }
     const syncProfile = () => {
       const user = window.Telegram?.WebApp.initDataUnsafe.user;
@@ -32,7 +28,11 @@ export default function Home() {
     };
     syncProfile();
     const timers = [120, 300, 700].map(delay => window.setTimeout(syncProfile, delay));
-    return () => timers.forEach(window.clearTimeout);
+    const closeGame = (event: MessageEvent) => {
+      if (event.origin === window.location.origin && event.data?.type === 'blitzzz-close-game') setGameUrl(null);
+    };
+    window.addEventListener('message', closeGame);
+    return () => { timers.forEach(window.clearTimeout); window.removeEventListener('message', closeGame); };
   }, []);
 
   const showSoon = () => {
@@ -41,14 +41,19 @@ export default function Home() {
     window.setTimeout(() => setNotice(false), 1800);
   };
 
-  return (
+  const openGame = (room?: string) => {
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
+    setGameUrl(room ? `/four-in-a-row/index.html?room=${encodeURIComponent(room)}` : '/four-in-a-row/index.html');
+  };
+
+  return <>
     <main className="games-app">
       <header className="games-header">
         <h1>Blitzzz</h1>
         {profile && <p className="profile">{profile.photoUrl && <img src={profile.photoUrl} alt="" />}<span>{profile.name}</span></p>}
       </header>
       <section className="games" aria-label="Игры">
-        <a className="game-card" href="/four-in-a-row/index.html" onClick={() => window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light')}>
+        <a className="game-card" href="/four-in-a-row/index.html" onClick={event => { event.preventDefault(); openGame(); }}>
           <div className="copy"><h2>Четыре в ряд</h2><p>Собери четыре фишки в линию раньше соперника</p></div>
           {cells('connect', 42)}
         </a>
@@ -64,5 +69,6 @@ export default function Home() {
       </section>
       <div className={`notice${notice ? ' visible' : ''}`} role="status">Игра появится скоро</div>
     </main>
-  );
+    {gameUrl && <div className="game-overlay"><iframe src={gameUrl} title="Четыре в ряд" /></div>}
+  </>;
 }
