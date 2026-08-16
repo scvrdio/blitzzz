@@ -239,7 +239,7 @@
         updateSelection(false);
         await waitForFrame();
         publishLivePreview();
-        await wait(50);
+        await wait(10);
       }
     }
     async function playClickedColumn(column, color) {
@@ -283,14 +283,13 @@
       if (win) return finish(color, win);
       if (board.flat().every(Boolean)) return finish(null);
       if (color === 'blue') { turn.textContent = 'Ход соперника'; turn.classList.add('dark'); locked = true; preview.classList.remove('show'); setTimeout(computer, 520); }
-      else { locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); render(); }
+      else { locked = false; selected = firstOpen(3) !== -1 ? 3 : availableColumns()[0] ?? 3; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); render(); }
     }
     function positionRobotPreview(c) {
       positionChipPreview(robotPreview, c);
     }
     async function showRobotIntent(c) {
-      const options = availableColumns();
-      const start = options.find(column => column === selected && column !== c) ?? options.find(column => column !== c) ?? c;
+      const start = firstOpen(3) !== -1 ? 3 : availableColumns()[0] ?? c;
       positionRobotPreview(start); robotPreview.classList.add('show');
       await new Promise(resolve => setTimeout(resolve, 1000));
       const direction = Math.sign(c - start);
@@ -396,7 +395,7 @@
       const otherChip = chip === preview ? robotPreview : preview;
       chip.style.setProperty('--chip', color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
-      const column = isRemotePreview ? room.preview_column : selected;
+      const column = isRemotePreview ? room.preview_column : 3;
       otherChip.classList.remove('show'); positionChipPreview(chip, column); chip.classList.add('show'); remotePreviewColumn = column;
     }
     async function showRemoteMove(room) {
@@ -405,7 +404,7 @@
       if (!change) {
         // Our own preview updates arrive back from Supabase while the chip is moving.
         // Keep the room data fresh, but don't rebuild the board and drop animation frames.
-        if (isColumnTransitioning && room.turn === myChip()) { multiplayerRoom = room; return; }
+        if (isColumnTransitioning) { multiplayerRoom = room; return; }
         return setRoom(room);
       }
       if (pendingLocalMove && pendingLocalMove.r === change.r && pendingLocalMove.c === change.c && pendingLocalMove.color === change.color) return;
@@ -413,7 +412,7 @@
       const chip = change.color === 'blue' ? preview : robotPreview;
       chip.style.setProperty('--chip', change.color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', change.color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
-      let column = Number.isInteger(remotePreviewColumn) ? remotePreviewColumn : selected;
+      let column = Number.isInteger(remotePreviewColumn) ? remotePreviewColumn : 3;
       positionChipPreview(chip, column); chip.classList.add('show');
       const direction = Math.sign(change.c - column);
       while (direction && column !== change.c) {
