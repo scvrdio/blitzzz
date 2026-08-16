@@ -63,18 +63,21 @@ export default function Home() {
         {profile && <p className="profile">{profile.photoUrl && <img src={profile.photoUrl} alt="" />}<span>{profile.name}</span></p>}
       </header>
       <section className="games" aria-label="Игры">
-        <a className="game-card" href="/four-in-a-row/index.html" onClick={event => { event.preventDefault(); openGame(); }}>
+        <a className="game-card connect-card" href="/four-in-a-row/index.html" onClick={event => { event.preventDefault(); openGame(); }}>
           <div className="copy"><h2>Четыре в ряд</h2><p>Собери четыре фишки в линию раньше соперника</p></div>
           {cells('connect', 42)}
         </a>
         <button className="game-card soon" onClick={showSoon}>
-          <div className="copy"><h2>Крестики-нолики</h2><p>Выстрой три своих знака в ряд</p></div>{cells('tic', 9)}<span className="badge">Скоро</span>
+          <div className="copy"><h2>Крестики-нолики</h2><p>Выстрой три своих знака в ряд</p></div><span className="badge">скоро</span>
         </button>
         <button className="game-card soon" onClick={showSoon}>
-          <div className="copy"><h2>Морской бой</h2><p>Найди и потопи корабли соперника</p></div>{cells('sea', 100)}<span className="badge">Скоро</span>
+          <div className="copy"><h2>Морской бой</h2><p>Найди и потопи корабли соперника</p></div><span className="badge">скоро</span>
         </button>
         <button className="game-card soon" onClick={showSoon}>
-          <div className="copy"><h2>Коридор</h2><p>Дойди до края поля первым, задерживая противника стенами</p></div>{cells('hall', 100)}<span className="badge">Скоро</span>
+          <div className="copy"><h2>Шашки</h2><p>Забери все шашки соперника<br />или заблокируй его ходы</p></div><span className="badge">скоро</span>
+        </button>
+        <button className="game-card soon" onClick={showSoon}>
+          <div className="copy"><h2>Коридор</h2><p>Дойди до края поля первым,<br />задерживая противника стенами</p></div><span className="badge">скоро</span>
         </button>
       </section>
       <div className={`notice${notice ? ' visible' : ''}`} role="status">Игра появится скоро</div>

@@ -14,15 +14,16 @@ h1 { margin:0; font-size:20px; line-height:25px; font-weight:700; }
 .profile img { width:20px; height:20px; border-radius:50%; object-fit:cover; }
 .games { display:grid; gap:8px; }
 .game-card { width:100%; min-height:128px; display:flex; align-items:stretch; gap:16px; overflow:hidden; padding:16px; border:0; border-radius:24px; background:#ececec; color:inherit; font:inherit; text-align:left; text-decoration:none; cursor:pointer; transition:transform .18s cubic-bezier(.2,.8,.2,1); }
+.connect-card { gap:24px; }
 .game-card:active { transform:scale(.96); }
 .game-card:focus-visible { outline:3px solid #004cff; outline-offset:2px; }
-.copy { display:flex; flex:1; min-width:0; flex-direction:column; justify-content:center; gap:8px; }
+.copy { display:flex; flex:1; min-width:0; flex-direction:column; justify-content:flex-start; gap:8px; }
 h2 { margin:0; font-size:16px; line-height:20px; font-weight:700; }
 .copy p { margin:0; color:rgba(0,0,0,.5); font-size:12px; line-height:15px; }
-.game-preview { width:96px; height:96px; flex:none; position:relative; overflow:hidden; }
-.connect { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; align-content:start; padding-top:1px; }
+.game-preview { flex:none; position:relative; overflow:hidden; }
+.connect { width:113px; height:96px; display:grid; grid-template-columns:repeat(7,1fr); grid-template-rows:repeat(6,1fr); gap:4px; }
 .connect i { aspect-ratio:1; border-radius:50%; background:#f8f8f8; } .connect i:nth-child(24), .connect i:nth-child(31) { background:#004cff; } .connect i:nth-child(30), .connect i:nth-child(37), .connect i:nth-child(38) { background:#111; }
 .tic { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:1px; background:#111; border-radius:8px; padding:1px; }.tic i { position:relative; background:#f8f8f8; }.tic i:nth-child(2)::before,.tic i:nth-child(4)::before,.tic i:nth-child(6)::before { content:'×'; position:absolute; inset:-13px 0 0; text-align:center; font-family:Arial,sans-serif; font-size:47px; font-weight:300; color:#111; }.tic i:nth-child(5)::before,.tic i:nth-child(8)::before { content:''; position:absolute; inset:7px; border:3px solid #004cff; border-radius:50%; }
 .sea, .hall { display:grid; grid-template-columns:repeat(10,1fr); grid-template-rows:repeat(10,1fr); gap:1px; background:#d8d8d8; }.sea i, .hall i { background:#f8f8f8; }.sea i:nth-child(26), .sea i:nth-child(27), .sea i:nth-child(28), .sea i:nth-child(53) { background:#004cff; }.sea i:nth-child(67), .sea i:nth-child(68), .sea i:nth-child(69), .sea i:nth-child(70) { background:#111; }.hall i:nth-child(26), .hall i:nth-child(46), .hall i:nth-child(56), .hall i:nth-child(66) { background:#111; }.hall i:nth-child(81) { background:#004cff; border-radius:50%; transform:scale(.8); }
-.soon .game-preview { opacity:.55; }.badge { align-self:flex-start; margin-left:auto; padding:4px 7px; border-radius:999px; background:#f8f8f8; color:rgba(0,0,0,.45); font-size:10px; line-height:12px; white-space:nowrap; }.notice { position:fixed; bottom:24px; left:50%; z-index:2; width:max-content; max-width:calc(100vw - 32px); transform:translate(-50%,16px); padding:11px 14px; border-radius:14px; background:#111; color:#fff; font-size:12px; opacity:0; transition:.2s; pointer-events:none; }.notice.visible { opacity:1; transform:translate(-50%,0); }
+.soon { opacity:.5; }.badge { align-self:flex-start; padding:4px 12px; border-radius:99px; background:#fff; color:#111; font-size:12px; font-weight:600; line-height:15px; white-space:nowrap; }.notice { position:fixed; bottom:24px; left:50%; z-index:2; width:max-content; max-width:calc(100vw - 32px); transform:translate(-50%,16px); padding:11px 14px; border-radius:14px; background:#111; color:#fff; font-size:12px; opacity:0; transition:.2s; pointer-events:none; }.notice.visible { opacity:1; transform:translate(-50%,0); }
 @media (min-width:451px) { .games-app { min-height:852px; border-radius:48px; } } @media (max-height:740px) { .games-header { margin-bottom:16px; }.game-card { min-height:112px; }.game-preview { width:80px; height:80px; } }
