@@ -5,8 +5,7 @@
 button, a { -webkit-tap-highlight-color:transparent; }
 html, body { height:100%; margin:0; overflow:hidden; }
 body { min-height:100dvh; }
-.games-app { width:min(100%,450px); height:100dvh; min-height:100dvh; margin:auto; overflow:hidden; padding:calc(64px + var(--tg-content-safe-top)) calc(16px + var(--tg-content-safe-right)) calc(36px + var(--tg-content-safe-bottom)) calc(16px + var(--tg-content-safe-left)); background:#fff; visibility:hidden; }
-html.tg-layout-ready .games-app { visibility:visible; }
+.games-app { width:min(100%,450px); height:100dvh; min-height:100dvh; margin:auto; overflow:hidden; padding:calc(64px + var(--tg-content-safe-top)) calc(16px + var(--tg-content-safe-right)) calc(36px + var(--tg-content-safe-bottom)) calc(16px + var(--tg-content-safe-left)); background:#fff; }
 .games-header { display:grid; justify-items:center; gap:8px; margin-bottom:24px; }
 h1 { margin:0; font-size:20px; line-height:25px; font-weight:700; }
 .profile { display:flex; align-items:center; gap:6px; margin:0; padding:4px 12px 4px 4px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font-size:12px; font-weight:700; }
