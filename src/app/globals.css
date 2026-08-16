@@ -3,7 +3,8 @@
 :root { --tg-content-safe-top:0px; --tg-content-safe-bottom:0px; --tg-content-safe-left:0px; --tg-content-safe-right:0px; font-family: 'Merriweather', Georgia, serif; color:#111; background:#fff; }
 * { box-sizing:border-box; }
 button, a { -webkit-tap-highlight-color:transparent; }
-html, body { min-height:100%; margin:0; overflow-x:hidden; overflow-y:auto; }
+html, body { min-height:100%; margin:0; overflow-x:hidden; overflow-y:auto; scrollbar-width:none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display:none; }
 body { min-height:100dvh; }
 .games-app { width:min(100%,450px); min-height:100dvh; margin:auto; padding:calc(64px + var(--tg-content-safe-top)) calc(16px + var(--tg-content-safe-right)) calc(36px + var(--tg-content-safe-bottom)) calc(16px + var(--tg-content-safe-left)); background:#fff; }
 .game-overlay { position:fixed; z-index:20; inset:0; background:#fff; }
