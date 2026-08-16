@@ -101,6 +101,8 @@
     const SUPABASE_KEY = 'sb_publishable_z2hW6JrKlQ4EZg3W-SYrLA_Voq2WovC';
     const TELEGRAM_BOT_USERNAME = 'blitzzzgames_bot';
     const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const chipSound = new Audio('assets/quiet-banging.mp3');
+    chipSound.preload = 'auto'; chipSound.volume = .7;
     let board = emptyBoard();
     let selected = 4, locked = false, isColumnTransitioning = false, timer;
     const boardEl = document.querySelector('#board'), controls = document.querySelector('#controls');
@@ -118,6 +120,10 @@
     const myChip = () => multiplayerRoom?.blue_player === multiplayerUser?.id ? 'blue' : multiplayerRoom?.black_player === multiplayerUser?.id ? 'black' : null;
     const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
     const localProfile = { name: telegramUser ? [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') : 'Игрок', avatar: telegramUser?.photo_url || null };
+    function playChipSound() {
+      chipSound.currentTime = 0;
+      chipSound.play().catch(() => undefined);
+    }
 
     function render() {
       boardEl.replaceChildren(); controls.replaceChildren();
@@ -232,13 +238,15 @@
     }
     async function playClickedColumn(column, color) {
       if (locked || isColumnTransitioning) return;
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
       isColumnTransitioning = true;
       try {
         const direction = Math.sign(column - selected);
         while (direction && selected !== column) {
           selected += direction;
+          playChipSound();
           updateSelection();
-          await new Promise(resolve => setTimeout(resolve, 90));
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
       } finally {
         isColumnTransitioning = false;
@@ -248,17 +256,20 @@
     function beginSlide(event) {
       if (locked || isColumnTransitioning) return;
       event.preventDefault(); const thumb = controls; thumb.setPointerCapture(event.pointerId);
+      const webApp = window.Telegram?.WebApp;
+      webApp?.disableVerticalSwipes?.();
+      const restoreVerticalSwipe = () => webApp?.enableVerticalSwipes?.();
       const move = pointer => {
         const rect = controls.getBoundingClientRect();
         const next = Math.max(0, Math.min(cols - 1, Math.round((pointer.clientX - rect.left) / (rect.width / cols) - .5)));
-        if (next !== selected && firstOpen(next) !== -1) { selected = next; window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); updateSelection(); }
+        if (next !== selected && firstOpen(next) !== -1) { selected = next; playChipSound(); window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); updateSelection(); }
       };
       const release = pointer => {
         if (pointer.pointerId !== event.pointerId) return;
-        move(pointer); thumb.releasePointerCapture(pointer.pointerId); thumb.removeEventListener('pointermove', move); thumb.removeEventListener('pointerup', release); thumb.removeEventListener('pointercancel', cancel);
+        move(pointer); thumb.releasePointerCapture(pointer.pointerId); thumb.removeEventListener('pointermove', move); thumb.removeEventListener('pointerup', release); thumb.removeEventListener('pointercancel', cancel); restoreVerticalSwipe();
         if (firstOpen(selected) !== -1) play(selected, isMultiplayer() ? myChip() : 'blue');
       };
-      const cancel = pointer => { if (pointer.pointerId === event.pointerId) { thumb.removeEventListener('pointermove', move); thumb.removeEventListener('pointerup', release); thumb.removeEventListener('pointercancel', cancel); } };
+      const cancel = pointer => { if (pointer.pointerId === event.pointerId) { thumb.removeEventListener('pointermove', move); thumb.removeEventListener('pointerup', release); thumb.removeEventListener('pointercancel', cancel); restoreVerticalSwipe(); } };
       thumb.addEventListener('pointermove', move); thumb.addEventListener('pointerup', release); thumb.addEventListener('pointercancel', cancel);
     }
     function show(text) { message.textContent = text; message.classList.add('visible'); clearTimeout(timer); timer = setTimeout(() => message.classList.remove('visible'), 2200); }
@@ -284,6 +295,7 @@
       const direction = Math.sign(c - start);
       for (let column = start + direction; direction && (direction > 0 ? column <= c : column >= c); column += direction) {
         positionRobotPreview(column);
+        playChipSound();
         await new Promise(resolve => setTimeout(resolve, 90));
       }
       await new Promise(resolve => setTimeout(resolve, 220)); const sourceRect = robotPreview.getBoundingClientRect(); robotPreview.classList.remove('show');
@@ -307,7 +319,7 @@
         { transform:'translateY(-16px)', offset:.11, easing:'cubic-bezier(.2,0,.2,1)' },
         { transform:`translateY(${distance}px)`, offset:1, easing:'cubic-bezier(.16,.72,.28,1)' }
       ], { duration, fill:'forwards' });
-      await animation.finished.catch(() => undefined); window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('medium'); chip.remove();
+      await animation.finished.catch(() => undefined); playChipSound(); window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('medium'); chip.remove();
     }
     function findWin(r, c, color) {
       const directions = [[0,1],[1,0],[1,1],[1,-1]];
@@ -402,6 +414,7 @@
       while (direction && column !== change.c) {
         column += direction;
         positionChipPreview(chip, column);
+        playChipSound();
         await new Promise(resolve => setTimeout(resolve, 55));
       }
       await new Promise(resolve => setTimeout(resolve, 200));
