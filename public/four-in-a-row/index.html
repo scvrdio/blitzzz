@@ -107,7 +107,7 @@
     const holes = document.querySelector('#holes'), bodyLayer = document.querySelector('#body-layer');
     const opponent = document.querySelector('#opponent'), opponentName = document.querySelector('#opponent-name'), opponentAvatar = document.querySelector('#opponent-avatar');
     const invite = document.querySelector('#invite');
-    let multiplayerRoom = null, multiplayerUser = null, roomChannel = null, pendingLocalMove = null, remoteMoveInProgress = false;
+    let multiplayerRoom = null, multiplayerUser = null, roomChannel = null, pendingLocalMove = null, remoteMoveInProgress = false, lastPreviewSent = null;
     const urlParams = new URLSearchParams(location.search);
     const telegramStartParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || urlParams.get('tgWebAppStartParam');
     const roomId = urlParams.get('room') || (telegramStartParam?.startsWith('game_') ? telegramStartParam.slice(5) : null);
@@ -220,6 +220,7 @@
       const thumb = controls.querySelector('.slider-thumb');
       if (thumb) { const width = controls.getBoundingClientRect().width; thumb.style.left = `${selected * (width / cols) + width / (cols * 2) - 12}px`; }
       positionPreview();
+      publishLivePreview();
     }
     function clearSelectionVisuals() {
       preview.classList.remove('show'); robotPreview.classList.remove('show');
@@ -320,6 +321,11 @@
       }
       multiplayerUser = session.user;
     }
+    function publishLivePreview() {
+      if (!isMultiplayer() || locked || multiplayerRoom.status !== 'active' || multiplayerRoom.turn !== myChip() || lastPreviewSent === selected) return;
+      lastPreviewSent = selected;
+      supabaseClient.rpc('set_connect_four_preview', { room_id:multiplayerRoom.id, selected_column:selected }).catch(() => { lastPreviewSent = null; });
+    }
     function setOpponent(name, avatar) {
       opponentName.textContent = name;
       opponent.classList.toggle('has-avatar', Boolean(avatar));
@@ -332,19 +338,32 @@
       const chip = myChip();
       const isBlue = chip === 'blue';
       setOpponent(room.status === 'waiting' ? 'Ждём соперника' : isBlue ? (room.black_name || 'Соперник') : (room.blue_name || 'Соперник'), room.status === 'waiting' ? null : isBlue ? room.black_avatar : room.blue_avatar);
-      if (room.status === 'waiting') { locked = true; turn.textContent = 'Ждём соперника'; turn.classList.add('dark'); controls.classList.add('hidden'); }
+      if (room.status === 'waiting') { lastPreviewSent = null; locked = true; turn.textContent = 'Ждём соперника'; turn.classList.add('dark'); controls.classList.add('hidden'); }
       else if (room.status === 'finished') { finish(room.winner === chip ? 'blue' : room.winner === 'draw' ? null : 'black'); }
       else {
         locked = room.turn !== chip;
         if (!locked && firstOpen(selected) < 0) selected = availableColumns()[0] ?? selected;
+        if (locked) lastPreviewSent = null;
+        restart.classList.remove('show');
         turn.textContent = locked ? 'Ход соперника' : 'Твой ход'; turn.classList.toggle('dark', locked); controls.classList.remove('hidden'); controls.classList.toggle('disabled', locked);
       }
       render();
+      showLiveOpponentPreview(room);
     }
     function boardChange(previous, next) {
       if (!previous || !next) return null;
       for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (previous[r]?.[c] !== next[r]?.[c] && next[r]?.[c]) return { r, c, color:next[r][c] };
       return null;
+    }
+    function showLiveOpponentPreview(room) {
+      const isRemotePreview = room.status === 'active' && room.preview_player && room.preview_player !== multiplayerUser?.id && room.preview_player === (room.turn === 'blue' ? room.blue_player : room.black_player) && Number.isInteger(room.preview_column);
+      if (!isRemotePreview) return;
+      const color = room.preview_player === room.blue_player ? 'blue' : 'black';
+      const chip = color === 'blue' ? preview : robotPreview;
+      const otherChip = chip === preview ? robotPreview : preview;
+      chip.style.setProperty('--chip', color === 'blue' ? '#004cff' : '#111');
+      chip.style.setProperty('--trail', color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
+      otherChip.classList.remove('show'); positionChipPreview(chip, room.preview_column); chip.classList.add('show');
     }
     async function showRemoteMove(room) {
       const change = boardChange(board, room.board);
@@ -354,10 +373,7 @@
       const chip = change.color === 'blue' ? preview : robotPreview;
       chip.style.setProperty('--chip', change.color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', change.color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
-      let column = selected;
-      positionChipPreview(chip, column); chip.classList.add('show');
-      const direction = Math.sign(change.c - column);
-      while (direction && column !== change.c) { column += direction; positionChipPreview(chip, column); await new Promise(resolve => setTimeout(resolve, 38)); }
+      positionChipPreview(chip, room.preview_column ?? change.c); chip.classList.add('show');
       const sourceRect = chip.getBoundingClientRect(); chip.classList.remove('show');
       await animateDrop(change.c, change.r, change.color, sourceRect);
       remoteMoveInProgress = false; setRoom(room);
@@ -397,6 +413,7 @@
       const r = firstOpen(c); locked = true; clearSelectionVisuals();
       try {
         pendingLocalMove = { r, c, color };
+        lastPreviewSent = null;
         const move = supabaseClient.rpc('make_connect_four_move', { room_id:multiplayerRoom.id, selected_column:c });
         await animateDrop(c, r, color, color === 'black' ? robotPreview.getBoundingClientRect() : preview.getBoundingClientRect());
         const { data, error } = await move;
