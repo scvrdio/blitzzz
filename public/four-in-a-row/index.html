@@ -529,6 +529,7 @@
     }
     invite.onclick = createInvite;
     function applyTelegramSafeArea() {
+      if (window.parent !== window) return;
       const tg = window.Telegram?.WebApp;
       if (!tg) return;
       const set = (name, inset) => ['top', 'right', 'bottom', 'left'].forEach(side => document.documentElement.style.setProperty(`--${name}-${side}`, `${Math.max(0, Math.floor(inset?.[side] || 0))}px`));
