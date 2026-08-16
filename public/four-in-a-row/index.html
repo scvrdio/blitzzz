@@ -102,7 +102,7 @@
     const TELEGRAM_BOT_USERNAME = 'blitzzzgames_bot';
     const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
     let board = emptyBoard();
-    let selected = 4, locked = false, timer;
+    let selected = 4, locked = false, isColumnTransitioning = false, timer;
     const boardEl = document.querySelector('#board'), controls = document.querySelector('#controls');
     const turn = document.querySelector('#turn'), preview = document.querySelector('#preview'), robotPreview = document.querySelector('#robot-preview'), restart = document.querySelector('#restart'), message = document.querySelector('#message');
     const guide = document.querySelector('#guide'), boardSheet = document.querySelector('.board-sheet');
@@ -139,12 +139,11 @@
       const thumb = document.createElement('span'); thumb.className = 'slider-thumb'; thumb.setAttribute('aria-hidden', 'true'); controls.append(thumb); updateSelection();
       controls.onpointerdown = beginSlide;
       boardEl.onclick = event => {
-        if (locked) return;
+        if (locked || isColumnTransitioning) return;
         const rect = boardEl.getBoundingClientRect();
         const column = Math.max(0, Math.min(cols - 1, Math.floor((event.clientX - rect.left) / (rect.width / cols))));
         if (firstOpen(column) === -1) return;
-        selected = column;
-        play(column, isMultiplayer() ? myChip() : 'blue');
+        playClickedColumn(column, isMultiplayer() ? myChip() : 'blue');
       };
     }
     function buildBoardBody() {
@@ -231,8 +230,22 @@
       preview.classList.remove('show'); robotPreview.classList.remove('show');
       Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint', 'hint-black'));
     }
+    async function playClickedColumn(column, color) {
+      if (locked || isColumnTransitioning) return;
+      if (column !== selected) {
+        isColumnTransitioning = true;
+        const direction = Math.sign(column - selected);
+        while (direction && selected !== column) {
+          selected += direction;
+          updateSelection();
+          await new Promise(resolve => setTimeout(resolve, 55));
+        }
+        isColumnTransitioning = false;
+      }
+      play(column, color);
+    }
     function beginSlide(event) {
-      if (locked) return;
+      if (locked || isColumnTransitioning) return;
       event.preventDefault(); const thumb = controls; thumb.setPointerCapture(event.pointerId);
       const move = pointer => {
         const rect = controls.getBoundingClientRect();
@@ -360,6 +373,11 @@
       for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (previous[r]?.[c] !== next[r]?.[c] && next[r]?.[c]) return { r, c, color:next[r][c] };
       return null;
     }
+    function positionDropHint(column, color) {
+      Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint', 'hint-black'));
+      const row = firstOpen(column);
+      if (row >= 0) boardEl.children[row * cols + column].classList.add(color === 'black' ? 'hint-black' : 'hint');
+    }
     function showLiveOpponentPreview(room) {
       const isOpponentTurn = room.status === 'active' && room.turn !== myChip();
       if (!isOpponentTurn) return;
@@ -370,9 +388,7 @@
       chip.style.setProperty('--chip', color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
       const column = isRemotePreview ? room.preview_column : selected;
-      Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint', 'hint-black'));
-      const row = firstOpen(column);
-      if (row >= 0) boardEl.children[row * cols + column].classList.add(color === 'black' ? 'hint-black' : 'hint');
+      positionDropHint(column, color);
       otherChip.classList.remove('show'); positionChipPreview(chip, column); chip.classList.add('show'); remotePreviewColumn = column;
     }
     async function showRemoteMove(room) {
@@ -385,10 +401,11 @@
       chip.style.setProperty('--chip', change.color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', change.color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
       let column = Number.isInteger(remotePreviewColumn) ? remotePreviewColumn : selected;
-      positionChipPreview(chip, column); chip.classList.add('show');
+      positionDropHint(column, change.color); positionChipPreview(chip, column); chip.classList.add('show');
       const direction = Math.sign(change.c - column);
       while (direction && column !== change.c) {
         column += direction;
+        positionDropHint(column, change.color);
         positionChipPreview(chip, column);
         await new Promise(resolve => setTimeout(resolve, 55));
       }
