@@ -21,6 +21,8 @@
     .exit img { width:44px; height:44px; }
     h1 { position:absolute; inset:22px 0 auto; margin:0; pointer-events:none; text-align:center; font-size:20px; line-height:29px; font-weight:700; }
     .opponent { position:absolute; top:59px; left:50%; transform:translateX(-50%); display:flex; gap:6px; align-items:center; padding:4px 12px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font:600 12px/16px 'Merriweather', Georgia, serif; white-space:nowrap; }
+    .opponent-avatar { display:none; width:18px; height:18px; border-radius:50%; object-fit:cover; }
+    .opponent.has-avatar .opponent-avatar { display:block; }
     .invite { position:absolute; top:16px; left:16px; z-index:1; display:grid; place-items:center; width:48px; height:48px; padding:16px; border:0; border-radius:40px; background:#ececec; cursor:pointer; }
     .invite img { width:16px; height:16px; }
     .game { display:flex; flex:1; min-height:0; flex-direction:column; align-items:center; justify-content:flex-end; gap:32px; }
@@ -48,6 +50,7 @@
     .cell.win { outline:none; }
     .controls { height:56px; margin-top:32px; border-radius:999px; display:grid; grid-template-columns:repeat(7,1fr); align-items:center; position:relative; z-index:3; background:#fff; cursor:grab; touch-action:none; }
     .controls.hidden { display:none; }
+    .controls.disabled { cursor:default; opacity:.5; }
     .controls.black .slider-thumb, .controls.black .control.selected { background:#111; }
     .control { place-self:center; width:4px; height:4px; border-radius:50%; background:#b8b8b8; }
     .control.selected { background:#004cff; }
@@ -68,7 +71,7 @@
     <header class="header">
       <h1>Четыре в ряд</h1>
       <button class="invite" id="invite" type="button" aria-label="Пригласить друга"><img src="assets/invite.svg" alt=""></button>
-      <div class="opponent" id="opponent">Соперник Робот</div>
+      <div class="opponent" id="opponent"><img class="opponent-avatar" id="opponent-avatar" alt=""><span id="opponent-name">Соперник Робот</span></div>
       <a class="exit" href="/" aria-label="Вернуться на главную"><img src="assets/leave.svg" alt=""></a>
     </header>
     <section class="game">
@@ -100,12 +103,14 @@
     const guide = document.querySelector('#guide'), boardSheet = document.querySelector('.board-sheet');
     const dropZone = document.querySelector('.drop-zone');
     const holes = document.querySelector('#holes'), bodyLayer = document.querySelector('#body-layer');
-    const opponent = document.querySelector('#opponent');
+    const opponent = document.querySelector('#opponent'), opponentName = document.querySelector('#opponent-name'), opponentAvatar = document.querySelector('#opponent-avatar');
     const invite = document.querySelector('#invite');
-    let multiplayerRoom = null, multiplayerUser = null, roomChannel = null;
+    let multiplayerRoom = null, multiplayerUser = null, roomChannel = null, pendingLocalMove = null, remoteMoveInProgress = false;
     const roomId = new URLSearchParams(location.search).get('room');
     const isMultiplayer = () => Boolean(multiplayerRoom);
     const myChip = () => multiplayerRoom?.blue_player === multiplayerUser?.id ? 'blue' : multiplayerRoom?.black_player === multiplayerUser?.id ? 'black' : null;
+    const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    const localProfile = { name: telegramUser ? [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') : 'Игрок', avatar: telegramUser?.photo_url || null };
 
     function render() {
       boardEl.replaceChildren(); controls.replaceChildren();
@@ -122,6 +127,8 @@
         const dot = document.createElement('span'); dot.className = `control ${c === selected ? 'selected' : ''}`; dot.dataset.column = c; controls.append(dot);
       }
       controls.classList.toggle('black', isMultiplayer() && myChip() === 'black');
+      controls.classList.toggle('disabled', locked);
+      controls.setAttribute('aria-disabled', locked ? 'true' : 'false');
       const thumb = document.createElement('span'); thumb.className = 'slider-thumb'; thumb.setAttribute('aria-hidden', 'true'); controls.append(thumb); updateSelection();
       controls.onpointerdown = beginSlide;
       boardEl.onclick = event => {
@@ -299,19 +306,47 @@
       }
       multiplayerUser = session.user;
     }
+    function setOpponent(name, avatar) {
+      opponentName.textContent = name;
+      opponent.classList.toggle('has-avatar', Boolean(avatar));
+      if (avatar) opponentAvatar.src = avatar;
+      else opponentAvatar.removeAttribute('src');
+    }
     function setRoom(room) {
       multiplayerRoom = room;
       board = room.board;
       const chip = myChip();
-      opponent.textContent = room.status === 'waiting' ? 'Ждём соперника' : 'Соперник онлайн';
+      const isBlue = chip === 'blue';
+      setOpponent(room.status === 'waiting' ? 'Ждём соперника' : isBlue ? (room.black_name || 'Соперник') : (room.blue_name || 'Соперник'), room.status === 'waiting' ? null : isBlue ? room.black_avatar : room.blue_avatar);
       if (room.status === 'waiting') { locked = true; turn.textContent = 'Ждём соперника'; turn.classList.add('dark'); controls.classList.add('hidden'); }
       else if (room.status === 'finished') { finish(room.winner === chip ? 'blue' : room.winner === 'draw' ? null : 'black'); }
-      else { locked = room.turn !== chip; turn.textContent = locked ? 'Ход соперника' : 'Твой ход'; turn.classList.toggle('dark', locked); controls.classList.toggle('hidden', locked); }
+      else { locked = room.turn !== chip; turn.textContent = locked ? 'Ход соперника' : 'Твой ход'; turn.classList.toggle('dark', locked); controls.classList.remove('hidden'); controls.classList.toggle('disabled', locked); }
       render();
+    }
+    function boardChange(previous, next) {
+      if (!previous || !next) return null;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (previous[r]?.[c] !== next[r]?.[c] && next[r]?.[c]) return { r, c, color:next[r][c] };
+      return null;
+    }
+    async function showRemoteMove(room) {
+      const change = boardChange(board, room.board);
+      if (!change || remoteMoveInProgress) return setRoom(room);
+      if (pendingLocalMove && pendingLocalMove.r === change.r && pendingLocalMove.c === change.c && pendingLocalMove.color === change.color) return;
+      remoteMoveInProgress = true; locked = true; controls.classList.add('disabled'); clearSelectionVisuals();
+      const chip = change.color === 'blue' ? preview : robotPreview;
+      chip.style.setProperty('--chip', change.color === 'blue' ? '#004cff' : '#111');
+      chip.style.setProperty('--trail', change.color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
+      let column = selected;
+      positionChipPreview(chip, column); chip.classList.add('show');
+      const direction = Math.sign(change.c - column);
+      while (direction && column !== change.c) { column += direction; positionChipPreview(chip, column); await new Promise(resolve => setTimeout(resolve, 38)); }
+      const sourceRect = chip.getBoundingClientRect(); chip.classList.remove('show');
+      await animateDrop(change.c, change.r, change.color, sourceRect);
+      remoteMoveInProgress = false; setRoom(room);
     }
     function subscribeToRoom(id) {
       roomChannel?.unsubscribe();
-      roomChannel = supabaseClient.channel(`connect-four-${id}`).on('postgres_changes', { event:'UPDATE', schema:'public', table:'connect_four_rooms', filter:`id=eq.${id}` }, payload => setRoom(payload.new)).subscribe();
+      roomChannel = supabaseClient.channel(`connect-four-${id}`).on('postgres_changes', { event:'UPDATE', schema:'public', table:'connect_four_rooms', filter:`id=eq.${id}` }, payload => showRemoteMove(payload.new)).subscribe();
     }
     async function openRoom(id) {
       await ensureMultiplayerUser();
@@ -319,7 +354,7 @@
       if (error) throw new Error('Приглашение больше не действует');
       let room = existing;
       if (room.blue_player !== multiplayerUser.id && room.black_player !== multiplayerUser.id) {
-        const joined = await supabaseClient.rpc('join_connect_four_room', { room_id:id });
+        const joined = await supabaseClient.rpc('join_connect_four_room', { room_id:id, player_name:localProfile.name, player_avatar:localProfile.avatar });
         if (joined.error) throw joined.error;
         room = joined.data;
       }
@@ -329,7 +364,7 @@
       try {
         await ensureMultiplayerUser();
         if (!multiplayerRoom) {
-          const { data, error } = await supabaseClient.rpc('create_connect_four_room');
+          const { data, error } = await supabaseClient.rpc('create_connect_four_room', { player_name:localProfile.name, player_avatar:localProfile.avatar });
           if (error) throw error;
           const url = new URL(location.href); url.searchParams.set('room', data.id); history.replaceState(null, '', url);
           subscribeToRoom(data.id); setRoom(data);
@@ -343,11 +378,14 @@
       if (locked || color !== myChip() || multiplayerRoom.turn !== color || firstOpen(c) < 0) return;
       const r = firstOpen(c); locked = true; clearSelectionVisuals();
       try {
+        pendingLocalMove = { r, c, color };
+        const move = supabaseClient.rpc('make_connect_four_move', { room_id:multiplayerRoom.id, selected_column:c });
         await animateDrop(c, r, color, color === 'black' ? robotPreview.getBoundingClientRect() : preview.getBoundingClientRect());
-        const { data, error } = await supabaseClient.rpc('make_connect_four_move', { room_id:multiplayerRoom.id, selected_column:c });
+        const { data, error } = await move;
         if (error) throw error;
+        pendingLocalMove = null;
         setRoom(data);
-      } catch (error) { locked = false; show(error.message || 'Ход не прошёл'); render(); }
+      } catch (error) { pendingLocalMove = null; locked = false; show(error.message || 'Ход не прошёл'); render(); }
     }
     invite.onclick = createInvite;
     function applyTelegramSafeArea() {
@@ -359,7 +397,7 @@
     }
     applyTelegramSafeArea();
     render();
-    if (roomId) openRoom(roomId).catch(error => { show(error.message || 'Не удалось открыть игру'); opponent.textContent = 'Соперник Робот'; });
+    if (roomId) openRoom(roomId).catch(error => { show(error.message || 'Не удалось открыть игру'); setOpponent('Соперник Робот'); });
   </script>
 </body>
 </html>
