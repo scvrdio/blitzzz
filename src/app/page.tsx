@@ -13,6 +13,12 @@ export default function Home() {
   const [profile, setProfile] = useState<{ name: string; photoUrl?: string } | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const startParam = window.Telegram?.WebApp.initDataUnsafe.start_param || params.get('tgWebAppStartParam');
+    if (startParam?.startsWith('game_')) {
+      window.location.replace(`/four-in-a-row/index.html?room=${encodeURIComponent(startParam.slice(5))}`);
+      return;
+    }
     const user = window.Telegram?.WebApp.initDataUnsafe.user;
     if (!user) return;
     const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || '';

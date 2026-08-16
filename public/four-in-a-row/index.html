@@ -22,6 +22,7 @@
     h1 { position:absolute; inset:22px 0 auto; margin:0; pointer-events:none; text-align:center; font-size:20px; line-height:29px; font-weight:700; }
     .opponent { position:absolute; top:59px; left:50%; transform:translateX(-50%); display:flex; gap:6px; align-items:center; padding:4px 12px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font:600 12px/16px 'Merriweather', Georgia, serif; white-space:nowrap; }
     .opponent-avatar { display:none; width:18px; height:18px; border-radius:50%; object-fit:cover; }
+    .opponent.has-avatar { padding-left:4px; }
     .opponent.has-avatar .opponent-avatar { display:block; }
     .invite { position:absolute; top:16px; left:16px; z-index:1; display:grid; place-items:center; width:48px; height:48px; padding:16px; border:0; border-radius:40px; background:#ececec; cursor:pointer; }
     .invite img { width:16px; height:16px; }
@@ -297,7 +298,17 @@
       }
     }
     function finish(color, cells) { locked = true; if (cells) cells.forEach(([r,c]) => boardEl.children[r * cols + c].classList.add('win')); turn.textContent = color === 'blue' ? 'Победа' : color === 'black' ? 'Поражение' : 'Ничья'; turn.classList.toggle('dark', color === 'black'); controls.classList.add('hidden'); restart.classList.add('show'); show(turn.textContent); }
-    restart.onclick = () => { if (isMultiplayer()) return show('Для новой партии создай новое приглашение'); board = emptyBoard(); selected = 4; locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); robotPreview.classList.remove('show'); controls.classList.remove('hidden'); restart.classList.remove('show'); message.classList.remove('visible'); render(); };
+    restart.onclick = async () => {
+      if (isMultiplayer()) {
+        try {
+          const { data, error } = await supabaseClient.rpc('restart_connect_four_room', { room_id:multiplayerRoom.id });
+          if (error) throw error;
+          setRoom(data);
+        } catch (error) { show(error.message || 'Не удалось начать новую игру'); }
+        return;
+      }
+      board = emptyBoard(); selected = 4; locked = false; turn.textContent = 'Твой ход'; turn.classList.remove('dark'); robotPreview.classList.remove('show'); controls.classList.remove('hidden'); restart.classList.remove('show'); message.classList.remove('visible'); render();
+    };
 
     async function ensureMultiplayerUser() {
       if (!supabaseClient) throw new Error('Не удалось подключиться к серверу игры');
@@ -323,7 +334,11 @@
       setOpponent(room.status === 'waiting' ? 'Ждём соперника' : isBlue ? (room.black_name || 'Соперник') : (room.blue_name || 'Соперник'), room.status === 'waiting' ? null : isBlue ? room.black_avatar : room.blue_avatar);
       if (room.status === 'waiting') { locked = true; turn.textContent = 'Ждём соперника'; turn.classList.add('dark'); controls.classList.add('hidden'); }
       else if (room.status === 'finished') { finish(room.winner === chip ? 'blue' : room.winner === 'draw' ? null : 'black'); }
-      else { locked = room.turn !== chip; turn.textContent = locked ? 'Ход соперника' : 'Твой ход'; turn.classList.toggle('dark', locked); controls.classList.remove('hidden'); controls.classList.toggle('disabled', locked); }
+      else {
+        locked = room.turn !== chip;
+        if (!locked && firstOpen(selected) < 0) selected = availableColumns()[0] ?? selected;
+        turn.textContent = locked ? 'Ход соперника' : 'Твой ход'; turn.classList.toggle('dark', locked); controls.classList.remove('hidden'); controls.classList.toggle('disabled', locked);
+      }
       render();
     }
     function boardChange(previous, next) {
