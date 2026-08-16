@@ -26,7 +26,7 @@
     .chip-preview { --chip:#004cff; --trail:rgba(0,76,255,.3); position:absolute; z-index:1; opacity:0; border-radius:999px 999px 0 0; background:var(--trail); pointer-events:none; transition:opacity .15s ease; }
     .chip-preview::after { content:''; position:absolute; top:2px; left:2px; width:calc(100% - 4px); aspect-ratio:1; border-radius:50%; background:var(--chip); }
     .chip-preview.show { opacity:1; }
-    .robot-preview { --chip:#111; --trail:rgba(17,17,17,.3); transition:left .42s cubic-bezier(.2,.8,.3,1), opacity .14s ease; }
+    .robot-preview { --chip:#111; --trail:rgba(17,17,17,.3); transition:opacity .14s ease; }
     .robot-preview.show { opacity:1; }
     .restart { position:relative; z-index:3; left:50%; width:auto; height:56px; margin-top:32px; padding:0 16px; display:none; align-items:center; justify-content:center; border:0; border-radius:40px; background:#111; color:#f8f8f8; font:700 16px/20px 'Merriweather', Georgia, serif; cursor:pointer; transform:translateX(-50%); }
     .restart.show { display:inline-flex; }
@@ -141,17 +141,29 @@
       return win;
     }
     function countThreats(color) { return availableColumns().filter(c => wouldWin(c, color)).length; }
+    function longestLineAt(r, c, color) {
+      const directions = [[0,1],[1,0],[1,1],[1,-1]];
+      const longest = Math.max(...directions.map(([dr, dc]) => {
+        let length = 1;
+        for (const sign of [-1, 1]) for (let step = 1;;step++) { const nr = r + dr * step * sign, nc = c + dc * step * sign; if (nr < 0 || nr >= rows || nc < 0 || nc >= cols || board[nr][nc] !== color) break; length++; }
+        return length;
+      }));
+      return longest;
+    }
     function scoreRobotMove(c) {
       const r = firstOpen(c); board[r][c] = 'black';
-      const score = countThreats('black') * 60 - countThreats('blue') * 90 + (3 - Math.abs(3 - c)) * 4;
+      const score = countThreats('black') * 60 - countThreats('blue') * 90 + longestLineAt(r, c, 'black') * 12 + (3 - Math.abs(3 - c));
       board[r][c] = null; return score;
     }
     function chooseRobotColumn() {
       const options = availableColumns();
       const winning = options.find(c => wouldWin(c, 'black')); if (winning !== undefined) return winning;
       const block = options.find(c => wouldWin(c, 'blue')); if (block !== undefined) return block;
-      const best = Math.max(...options.map(scoreRobotMove));
-      const candidates = options.filter(c => scoreRobotMove(c) === best);
+      const movesPlayed = board.flat().filter(Boolean).length;
+      if (movesPlayed <= 1) { const opening = options.filter(c => c >= 1 && c <= 5); return (opening.length ? opening : options)[Math.floor(Math.random() * (opening.length || options.length))]; }
+      const scores = options.map(c => [c, scoreRobotMove(c)]);
+      const best = Math.max(...scores.map(([, score]) => score));
+      const candidates = scores.filter(([, score]) => score >= best - 1).map(([c]) => c);
       return candidates[Math.floor(Math.random() * candidates.length)];
     }
     function positionPreview() {
@@ -218,8 +230,12 @@
       const options = availableColumns();
       const start = options.find(column => column === selected && column !== c) ?? options.find(column => column !== c) ?? c;
       positionRobotPreview(start); robotPreview.classList.add('show');
-      await new Promise(resolve => setTimeout(resolve, 1000)); positionRobotPreview(c);
-      await new Promise(resolve => setTimeout(resolve, 440));
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const direction = Math.sign(c - start);
+      for (let column = start + direction; direction && (direction > 0 ? column <= c : column >= c); column += direction) {
+        positionRobotPreview(column);
+        await new Promise(resolve => setTimeout(resolve, 90));
+      }
       await new Promise(resolve => setTimeout(resolve, 220)); const sourceRect = robotPreview.getBoundingClientRect(); robotPreview.classList.remove('show');
       return sourceRect;
     }
