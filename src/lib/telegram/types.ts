@@ -47,8 +47,9 @@ export type TelegramWebApp = {
   setHeaderColor?: (color: string) => void;
   setBackgroundColor?: (color: string) => void;
   disableVerticalSwipes?: () => void;
+  enableVerticalSwipes?: () => void;
   MainButton: MainButton;
-  HapticFeedback?: { impactOccurred: (style: 'light' | 'medium' | 'heavy') => void };
+  HapticFeedback?: { impactOccurred: (style: 'light' | 'medium' | 'heavy') => void; selectionChanged?: () => void };
   onEvent: (event: 'themeChanged' | 'viewportChanged' | 'safeAreaChanged' | 'contentSafeAreaChanged', callback: () => void) => void;
   offEvent: (event: 'themeChanged' | 'viewportChanged' | 'safeAreaChanged' | 'contentSafeAreaChanged', callback: () => void) => void;
 };

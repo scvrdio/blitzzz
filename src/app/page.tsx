@@ -29,7 +29,17 @@ export default function Home() {
     syncProfile();
     const timers = [120, 300, 700].map(delay => window.setTimeout(syncProfile, delay));
     const closeGame = (event: MessageEvent) => {
-      if (event.origin === window.location.origin && event.data?.type === 'blitzzz-close-game') setGameUrl(null);
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'blitzzz-close-game') setGameUrl(null);
+      if (event.data?.type === 'blitzzz-vertical-swipe') {
+        const webApp = window.Telegram?.WebApp;
+        event.data.disabled ? webApp?.disableVerticalSwipes?.() : webApp?.enableVerticalSwipes?.();
+      }
+      if (event.data?.type === 'blitzzz-haptic') {
+        const feedback = window.Telegram?.WebApp?.HapticFeedback;
+        if (event.data.method === 'selectionChanged') feedback?.selectionChanged?.();
+        if (event.data.method === 'impactOccurred') feedback?.impactOccurred?.(event.data.style || 'light');
+      }
     };
     window.addEventListener('message', closeGame);
     return () => { timers.forEach(window.clearTimeout); window.removeEventListener('message', closeGame); };

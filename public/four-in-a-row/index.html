@@ -9,6 +9,27 @@
   <title>Четыре в ряд</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    try {
+      const topInset = window.parent !== window ? window.parent.getComputedStyle(window.parent.document.documentElement).getPropertyValue('--tg-content-safe-top') : '';
+      if (topInset) document.documentElement.style.setProperty('--tg-content-safe-top', topInset);
+      if (window.parent !== window) {
+        const send = (type, detail = {}) => window.parent.postMessage({ type, ...detail }, window.location.origin);
+        window.Telegram = window.Telegram || {};
+        const webApp = window.Telegram.WebApp || {};
+        window.Telegram.WebApp = {
+          ...webApp,
+          disableVerticalSwipes: () => send('blitzzz-vertical-swipe', { disabled:true }),
+          enableVerticalSwipes: () => send('blitzzz-vertical-swipe', { disabled:false }),
+          HapticFeedback: {
+            ...webApp.HapticFeedback,
+            impactOccurred: style => send('blitzzz-haptic', { method:'impactOccurred', style }),
+            selectionChanged: () => send('blitzzz-haptic', { method:'selectionChanged' }),
+          },
+        };
+      }
+    } catch {}
+  </script>
   <style>
     :root { --tg-content-safe-top:0px; --tg-content-safe-bottom:0px; --tg-content-safe-left:0px; --tg-content-safe-right:0px; color:#111; background:#fff; font-family:'Merriweather', Georgia, 'Times New Roman', serif; }
     * { box-sizing:border-box; }
