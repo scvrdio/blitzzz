@@ -31,7 +31,8 @@
     .game { display:flex; flex:1; min-height:0; flex-direction:column; align-items:center; justify-content:flex-end; gap:32px; }
     .turn { flex:1; display:grid; place-items:center; width:100%; padding-top:18px; color:#004cff; font-size:32px; font-weight:900; line-height:1.2; }
     .drop-zone { height:48px; flex:none; width:100%; position:relative; }
-    .chip-preview { --chip:#004cff; --trail:rgba(0,76,255,.3); position:absolute; z-index:1; opacity:0; border-radius:999px 999px 0 0; background:var(--trail); pointer-events:none; transition:opacity .12s ease, left .06s linear; }
+    .chip-preview { --chip:#004cff; --trail:rgba(0,76,255,.3); position:absolute; z-index:1; opacity:0; border-radius:999px 999px 0 0; background:var(--trail); pointer-events:none; transition:opacity .12s ease; }
+    .chip-preview.remote-moving { transition:opacity .12s ease, left .06s linear; }
     .chip-preview::after { content:''; position:absolute; top:2px; left:2px; width:calc(100% - 4px); aspect-ratio:1; border-radius:50%; background:var(--chip); }
     .chip-preview.show { opacity:1; }
     .robot-preview { --chip:#111; --trail:rgba(17,17,17,.3); transition:opacity .14s ease; }
@@ -50,6 +51,7 @@
     .cell.blue { background:#004cff; }
     .cell.black { background:#111; }
     .cell.hint { outline:3px solid #004cff; outline-offset:-3px; }
+    .cell.hint-black { outline:3px solid #111; outline-offset:-3px; }
     .cell.win { outline:none; }
     .controls { height:56px; margin-top:32px; border-radius:999px; display:grid; grid-template-columns:repeat(7,1fr); align-items:center; position:relative; z-index:3; background:#fff; cursor:grab; touch-action:none; }
     .controls.hidden { display:none; }
@@ -124,7 +126,7 @@
         const cell = document.createElement('div'); cell.className = `cell ${value || ''}`;
         const openRow = firstOpen(c);
         if (!locked && !value && c === selected && r <= openRow) cell.classList.add('path');
-        if (!locked && !value && r === openRow && c === selected) cell.classList.add('hint');
+        if (!locked && !value && r === openRow && c === selected) cell.classList.add(isMultiplayer() && myChip() === 'black' ? 'hint-black' : 'hint');
         cell.setAttribute('aria-hidden', 'true');
         boardEl.append(cell);
       }));
@@ -200,7 +202,7 @@
       const chip = isMultiplayer() && myChip() === 'black' ? robotPreview : preview;
       const otherChip = chip === preview ? robotPreview : preview;
       if (targetRow < 0 || locked) { chip.classList.remove('show'); otherChip.classList.remove('show'); return; }
-      positionChipPreview(chip, selected); otherChip.classList.remove('show'); chip.classList.add('show');
+      chip.classList.remove('remote-moving'); positionChipPreview(chip, selected); otherChip.classList.remove('show'); chip.classList.add('show');
     }
     function positionChipPreview(chip, c) {
       const target = boardEl.children[c]; if (!target) return;
@@ -216,7 +218,9 @@
       const openRow = firstOpen(selected);
       Array.from(boardEl.children).forEach((cell, index) => {
         const r = Math.floor(index / cols), c = index % cols;
-        cell.classList.toggle('hint', !locked && !board[r][c] && c === selected && r === openRow);
+        const isHint = !locked && !board[r][c] && c === selected && r === openRow;
+        cell.classList.toggle('hint', isHint && (!isMultiplayer() || myChip() !== 'black'));
+        cell.classList.toggle('hint-black', isHint && isMultiplayer() && myChip() === 'black');
       });
       controls.querySelectorAll('.control').forEach(dot => dot.classList.toggle('selected', Number(dot.dataset.column) === selected));
       const thumb = controls.querySelector('.slider-thumb');
@@ -226,7 +230,7 @@
     }
     function clearSelectionVisuals() {
       preview.classList.remove('show'); robotPreview.classList.remove('show');
-      Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint'));
+      Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint', 'hint-black'));
     }
     function beginSlide(event) {
       if (locked) return;
@@ -367,7 +371,10 @@
       chip.style.setProperty('--chip', color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
       const column = isRemotePreview ? room.preview_column : selected;
-      otherChip.classList.remove('show'); positionChipPreview(chip, column); chip.classList.add('show'); remotePreviewColumn = column;
+      Array.from(boardEl.children).forEach(cell => cell.classList.remove('hint', 'hint-black'));
+      const row = firstOpen(column);
+      if (row >= 0) boardEl.children[row * cols + column].classList.add(color === 'black' ? 'hint-black' : 'hint');
+      otherChip.classList.remove('show'); chip.classList.add('remote-moving'); positionChipPreview(chip, column); chip.classList.add('show'); remotePreviewColumn = column;
     }
     async function showRemoteMove(room) {
       const change = boardChange(board, room.board);
@@ -376,6 +383,7 @@
       if (pendingLocalMove && pendingLocalMove.r === change.r && pendingLocalMove.c === change.c && pendingLocalMove.color === change.color) return;
       remoteMoveInProgress = true; locked = true; controls.classList.add('disabled');
       const chip = change.color === 'blue' ? preview : robotPreview;
+      chip.classList.add('remote-moving');
       chip.style.setProperty('--chip', change.color === 'blue' ? '#004cff' : '#111');
       chip.style.setProperty('--trail', change.color === 'blue' ? 'rgba(0,76,255,.3)' : 'rgba(17,17,17,.3)');
       let column = Number.isInteger(remotePreviewColumn) ? remotePreviewColumn : selected;
