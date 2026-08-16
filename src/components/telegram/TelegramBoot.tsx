@@ -20,7 +20,10 @@ export function TelegramBoot() {
     root.style.setProperty('--tg-content-safe-top', '0px');
     root.style.setProperty('--tg-content-safe-bottom', '0px');
     const webApp = window.Telegram?.WebApp;
-    if (!webApp) return;
+    if (!webApp) {
+      root.classList.add('tg-layout-ready');
+      return;
+    }
 
     const prepare = () => {
       try {
@@ -37,6 +40,7 @@ export function TelegramBoot() {
     };
 
     apply();
+    root.classList.add('tg-layout-ready');
     const timers = [120, 300, 700].map(delay => window.setTimeout(apply, delay));
     webApp.onEvent('safeAreaChanged', apply);
     webApp.onEvent('contentSafeAreaChanged', apply);
