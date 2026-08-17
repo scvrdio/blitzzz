@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&display=swap');
 
 :root { --tg-content-safe-top:0px; --tg-content-safe-bottom:0px; --tg-content-safe-left:0px; --tg-content-safe-right:0px; font-family: 'Merriweather', Georgia, serif; color:#111; background:#fff; }
-* { box-sizing:border-box; }
+* { box-sizing:border-box; -webkit-user-select:none; user-select:none; }
 button, a { -webkit-tap-highlight-color:transparent; }
 html, body { min-height:100%; margin:0; overflow-x:hidden; overflow-y:auto; scrollbar-width:none; }
 html::-webkit-scrollbar, body::-webkit-scrollbar { display:none; }

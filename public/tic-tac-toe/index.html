@@ -22,7 +22,7 @@
   <title>Крестики-нолики</title>
   <style>
     :root { --tg-content-safe-top:0px; --tg-content-safe-bottom:0px; --tg-content-safe-left:0px; --tg-content-safe-right:0px; color:#111; background:#fff; font-family:'Merriweather', Georgia, serif; }
-    * { box-sizing:border-box; }
+    * { box-sizing:border-box; -webkit-user-select:none; user-select:none; }
     html, body { height:100%; overflow:hidden; }
     body { margin:0; height:100svh; padding:calc(40px + var(--tg-content-safe-top)) var(--tg-content-safe-right) var(--tg-content-safe-bottom) var(--tg-content-safe-left); display:grid; place-items:center; }
     html.tg-desktop body { padding:0; }
@@ -41,17 +41,17 @@
     .game { flex:1; min-height:0; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:32px; }
     .turn { flex:1; display:grid; place-items:center; width:100%; padding-top:18px; color:#004cff; font-size:32px; font-weight:900; line-height:1.2; text-align:center; }
     .turn.dark { color:#111; }
-    .board { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; width:100%; overflow:hidden; border-radius:40px 40px 0 0; background:#f8f8f8; }
+    .board { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; align-self:center; width:calc(100% - 64px); margin-bottom:128px; overflow:hidden; border-radius:40px; background:#f8f8f8; }
     .cell { position:relative; aspect-ratio:1; border:0; padding:0; background:#ececec; cursor:pointer; -webkit-tap-highlight-color:transparent; appearance:none; -webkit-appearance:none; }
     .cell:active { background:#ececec; }
     .cell:disabled { cursor:default; }
     .cell img { position:absolute; left:50%; top:50%; width:38%; height:38%; transform:translate(-50%,-50%); }
     .cell.o img { width:40%; height:40%; }
-    .restart { position:absolute; z-index:2; left:50%; bottom:32px; width:auto; height:56px; margin:0; padding:0 16px; border:0; border-radius:40px; background:#111; color:#f8f8f8; font:700 16px/20px 'Merriweather', Georgia, serif; cursor:pointer; transform:translateX(-50%); transition:transform .18s cubic-bezier(.2,.8,.2,1); }
-    .restart:active { transform:translateX(-50%) scale(.9); }
+    .restart { position:absolute; z-index:2; left:50%; bottom:40px; width:auto; height:56px; margin:0; padding:0 16px; border:0; border-radius:40px; background:#111; color:#f8f8f8; font:700 16px/20px 'Merriweather', Georgia, serif; cursor:pointer; transform:translateX(-50%); transition:transform .12s ease; }
+    .restart:active { transform:translateX(-50%) scale(.92); }
     .restart[hidden] { display:none; }
     @media (max-width:450px) { .app { border-radius:0; } }
-    @media (max-height:730px) { .app { min-height:100%; } .game { gap:16px; } .restart { bottom:20px; } }
+    @media (max-height:730px) { .app { min-height:100%; } .game { gap:16px; } .board { margin-bottom:100px; } .restart { bottom:24px; } }
   </style>
 </head>
 <body>
