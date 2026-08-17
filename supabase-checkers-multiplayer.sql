@@ -7,7 +7,7 @@ create table public.checkers_rooms (
   black_player uuid references auth.users(id),
   blue_name text not null default 'Игрок',
   black_name text,
-  board jsonb not null default '["black",null,"black",null,"black",null,"black",null,null,"black",null,"black",null,"black",null,"black","black",null,"black",null,"black",null,"black",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"blue",null,"blue",null,"blue",null,"blue",null,null,"blue",null,"blue",null,"blue",null,"blue","blue",null,"blue",null,"blue",null,"blue",null]'::jsonb,
+  board jsonb not null default '["black",null,"black",null,"black",null,"black",null,null,"black",null,"black",null,"black",null,"black","black",null,"black",null,"black",null,"black",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"blue",null,"blue",null,"blue",null,"blue",null,null,"blue",null,"blue",null,"blue",null,"blue","blue",null,"blue",null,"blue",null,"blue",null]'::jsonb,
   turn text not null default 'blue' check (turn in ('blue', 'black')),
   status text not null default 'waiting' check (status in ('waiting', 'active', 'finished')),
   winner text check (winner in ('blue', 'black')),
@@ -74,7 +74,7 @@ begin
   if not found then raise exception 'Room not found'; end if;
   if auth.uid() <> result.blue_player and auth.uid() <> result.black_player then raise exception 'You are not a player in this room'; end if;
   update public.checkers_rooms set
-    board = '["black",null,"black",null,"black",null,"black",null,null,"black",null,"black",null,"black",null,"black","black",null,"black",null,"black",null,"black",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"blue",null,"blue",null,"blue",null,"blue",null,null,"blue",null,"blue",null,"blue",null,"blue","blue",null,"blue",null,"blue",null,"blue",null]'::jsonb,
+    board = '["black",null,"black",null,"black",null,"black",null,null,"black",null,"black",null,"black",null,"black","black",null,"black",null,"black",null,"black",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"blue",null,"blue",null,"blue",null,"blue",null,null,"blue",null,"blue",null,"blue",null,"blue","blue",null,"blue",null,"blue",null,"blue",null]'::jsonb,
     turn = 'blue', winner = null, status = case when result.black_player is null then 'waiting' else 'active' end, updated_at = now()
   where id = room_id returning * into result;
   return result;
