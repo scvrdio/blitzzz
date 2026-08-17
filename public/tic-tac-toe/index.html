@@ -42,7 +42,8 @@
     .turn { flex:1; display:grid; place-items:center; width:100%; padding-top:18px; color:#004cff; font-size:32px; font-weight:900; line-height:1.2; text-align:center; }
     .turn.dark { color:#111; }
     .board { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; width:100%; overflow:hidden; border-radius:40px 40px 0 0; background:#f8f8f8; }
-    .cell { position:relative; aspect-ratio:1; border:0; padding:0; background:#ececec; cursor:pointer; transition:background .18s ease; }
+    .cell { position:relative; aspect-ratio:1; border:0; padding:0; background:#ececec; cursor:pointer; -webkit-tap-highlight-color:transparent; appearance:none; -webkit-appearance:none; }
+    .cell:active { background:#ececec; }
     .cell:disabled { cursor:default; }
     .cell img { position:absolute; left:50%; top:50%; width:38%; height:38%; transform:translate(-50%,-50%); }
     .cell.o img { width:40%; height:40%; }
