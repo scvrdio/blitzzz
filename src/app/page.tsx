@@ -61,6 +61,11 @@ export default function Home() {
     setGameUrl('/tic-tac-toe/index.html');
   };
 
+  const openCheckers = () => {
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
+    setGameUrl('/checkers/index.html');
+  };
+
   return <>
     <main className="games-app">
       <header className="games-header">
@@ -78,9 +83,9 @@ export default function Home() {
         <button className="game-card soon" onClick={showSoon}>
           <div className="copy"><h2>Морской бой</h2><p>Найди и потопи корабли соперника</p></div><span className="badge">скоро</span>
         </button>
-        <button className="game-card soon" onClick={showSoon}>
-          <div className="copy"><h2>Шашки</h2><p>Забери все шашки соперника<br />или заблокируй его ходы</p></div><span className="badge">скоро</span>
-        </button>
+        <a className="game-card" href="/checkers/index.html" onClick={event => { event.preventDefault(); openCheckers(); }}>
+          <div className="copy"><h2>Шашки</h2><p>Забери все шашки соперника<br />или заблокируй его ходы</p></div>
+        </a>
         <button className="game-card soon" onClick={showSoon}>
           <div className="copy"><h2>Коридор</h2><p>Дойди до края поля первым,<br />задерживая противника стенами</p></div><span className="badge">скоро</span>
         </button>
