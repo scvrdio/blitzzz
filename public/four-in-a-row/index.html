@@ -494,7 +494,11 @@
         else { await navigator.clipboard?.writeText(url); show('Ссылка-приглашение скопирована'); }
       } catch (error) { show(error.message || 'Не удалось создать приглашение'); }
     }
-    document.querySelector('.exit').addEventListener('click', event => {
+    const exitButton = document.querySelector('.exit');
+    // При прямом открытии локального HTML абсолютный путь ведёт к file:///.
+    // В опубликованной версии оставляем путь главной страницы сайта.
+    if (window.location.protocol === 'file:') exitButton.href = '../index.html?leave=1';
+    exitButton.addEventListener('click', event => {
       if (window.parent !== window) {
         event.preventDefault();
         window.parent.postMessage({ type:'blitzzz-close-game' }, window.location.origin);

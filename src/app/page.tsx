@@ -56,6 +56,11 @@ export default function Home() {
     setGameUrl(room ? `/four-in-a-row/index.html?room=${encodeURIComponent(room)}` : '/four-in-a-row/index.html');
   };
 
+  const openTicTacToe = () => {
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
+    setGameUrl('/tic-tac-toe/index.html');
+  };
+
   return <>
     <main className="games-app">
       <header className="games-header">
@@ -67,9 +72,9 @@ export default function Home() {
           <div className="copy"><h2>Четыре в ряд</h2><p>Собери четыре фишки<br />в линию раньше соперника</p></div>
           {cells('connect', 42)}
         </a>
-        <button className="game-card soon" onClick={showSoon}>
-          <div className="copy"><h2>Крестики-нолики</h2><p>Выстрой три своих знака в ряд</p></div><span className="badge">скоро</span>
-        </button>
+        <a className="game-card" href="/tic-tac-toe/index.html" onClick={event => { event.preventDefault(); openTicTacToe(); }}>
+          <div className="copy"><h2>Крестики-нолики</h2><p>Выстрой три своих знака в ряд</p></div>
+        </a>
         <button className="game-card soon" onClick={showSoon}>
           <div className="copy"><h2>Морской бой</h2><p>Найди и потопи корабли соперника</p></div><span className="badge">скоро</span>
         </button>
