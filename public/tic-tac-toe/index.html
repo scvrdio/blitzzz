@@ -93,13 +93,19 @@
     function winner(state) { return lines.find(line => state[line[0]] && state[line[0]] === state[line[1]] && state[line[1]] === state[line[2]]) || null; }
     function setTitle(text, dark = false) { turn.textContent = text; turn.classList.toggle('dark', dark); }
     function render() {
-      boardEl.replaceChildren();
+      if (!boardEl.children.length) {
+        cells.forEach((_, index) => {
+          const cell = document.createElement('button');
+          cell.className = 'cell'; cell.type = 'button'; cell.setAttribute('aria-label', `Ячейка ${index + 1}`);
+          cell.onclick = () => move(index); boardEl.append(cell);
+        });
+      }
       cells.forEach((value, index) => {
-        const cell = document.createElement('button');
-        cell.className = `cell ${value || ''}`;
-        cell.type = 'button'; cell.disabled = locked || Boolean(value); cell.setAttribute('aria-label', `Ячейка ${index + 1}`);
+        const cell = boardEl.children[index];
+        cell.className = `cell ${value || ''}`; cell.disabled = locked || Boolean(value);
+        if (cell.dataset.mark === (value || '')) return;
+        cell.dataset.mark = value || ''; cell.replaceChildren();
         if (value) { const icon = document.createElement('img'); icon.src = `assets/figma-asset-${value === 'x' ? '3' : '2'}.svg`; icon.alt = value === 'x' ? 'Крестик' : 'Нолик'; cell.append(icon); }
-        cell.onclick = () => move(index); boardEl.append(cell);
       });
     }
     function finish(mark) {
