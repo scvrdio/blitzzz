@@ -20,6 +20,10 @@ export default function Home() {
       setGameUrl(`/four-in-a-row/index.html?room=${encodeURIComponent(startParam.slice(5))}`);
       window.history.replaceState(null, '', '/');
     }
+    if (startParam?.startsWith('checkers_')) {
+      setGameUrl(`/checkers/index.html?room=${encodeURIComponent(startParam.slice(9))}`);
+      window.history.replaceState(null, '', '/');
+    }
     const syncProfile = () => {
       const user = window.Telegram?.WebApp.initDataUnsafe.user;
       if (!user) return;
@@ -77,15 +81,15 @@ export default function Home() {
           <div className="copy"><h2>Четыре в ряд</h2><p>Собери четыре фишки<br />в линию раньше соперника</p></div>
           {cells('connect', 42)}
         </a>
+        <a className="game-card" href="/checkers/index.html" onClick={event => { event.preventDefault(); openCheckers(); }}>
+          <div className="copy"><h2>Шашки</h2><p>Забери все шашки соперника<br />или заблокируй его ходы</p></div>
+        </a>
         <a className="game-card" href="/tic-tac-toe/index.html" onClick={event => { event.preventDefault(); openTicTacToe(); }}>
           <div className="copy"><h2>Крестики-нолики</h2><p>Выстрой три своих знака в ряд</p></div>
         </a>
         <button className="game-card soon" onClick={showSoon}>
           <div className="copy"><h2>Морской бой</h2><p>Найди и потопи корабли соперника</p></div><span className="badge">скоро</span>
         </button>
-        <a className="game-card" href="/checkers/index.html" onClick={event => { event.preventDefault(); openCheckers(); }}>
-          <div className="copy"><h2>Шашки</h2><p>Забери все шашки соперника<br />или заблокируй его ходы</p></div>
-        </a>
         <button className="game-card soon" onClick={showSoon}>
           <div className="copy"><h2>Коридор</h2><p>Дойди до края поля первым,<br />задерживая противника стенами</p></div><span className="badge">скоро</span>
         </button>
