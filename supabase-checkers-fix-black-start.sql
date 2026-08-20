@@ -1,5 +1,6 @@
--- Run this migration in Supabase → SQL Editor.
--- It fixes the missing third rows in new rooms and in room restarts.
+-- Run once in Supabase → SQL Editor.
+-- Aligns new online rooms with the local starting position: all pieces occupy
+-- the same colour of squares, so the first move is always legal.
 
 alter table public.checkers_rooms alter column board set default
   '[null,"black",null,"black",null,"black",null,"black","black",null,"black",null,"black",null,"black",null,null,"black",null,"black",null,"black",null,"black",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"blue",null,"blue",null,"blue",null,"blue",null,null,"blue",null,"blue",null,"blue",null,"blue","blue",null,"blue",null,"blue",null,"blue",null]'::jsonb;
@@ -19,3 +20,8 @@ begin
   return result;
 end;
 $$;
+
+-- Existing waiting rooms have not started yet, so it is safe to correct them.
+update public.checkers_rooms set board =
+  '[null,"black",null,"black",null,"black",null,"black","black",null,"black",null,"black",null,"black",null,null,"black",null,"black",null,"black",null,"black",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"blue",null,"blue",null,"blue",null,"blue",null,null,"blue",null,"blue",null,"blue",null,"blue","blue",null,"blue",null,"blue",null,"blue",null]'::jsonb
+where status = 'waiting';
