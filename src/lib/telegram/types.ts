@@ -3,13 +3,16 @@ export type TelegramUser = {
   first_name: string;
   last_name?: string;
   username?: string;
-  language_code?: string;
   photo_url?: string;
 };
 
+export type TelegramInsets = { top: number; bottom: number; left: number; right: number };
+export type TelegramImpactStyle = 'light' | 'medium' | 'heavy' | 'rigid' | 'soft';
+export type TelegramNotificationStyle = 'error' | 'success' | 'warning';
+export type TelegramEvent = 'themeChanged' | 'viewportChanged' | 'safeAreaChanged' | 'contentSafeAreaChanged';
+
 export type TelegramThemeParams = {
   bg_color?: string;
-  secondary_bg_color?: string;
   text_color?: string;
   hint_color?: string;
   link_color?: string;
@@ -17,14 +20,10 @@ export type TelegramThemeParams = {
   button_text_color?: string;
 };
 
-export type TelegramInsets = { top?: number; bottom?: number; left?: number; right?: number };
-
 type MainButton = {
   setText: (text: string) => void;
   show: () => void;
   hide: () => void;
-  showProgress: (leaveActive?: boolean) => void;
-  hideProgress: () => void;
   onClick: (callback: () => void) => void;
   offClick: (callback: () => void) => void;
 };
@@ -32,11 +31,8 @@ type MainButton = {
 export type TelegramWebApp = {
   initData: string;
   initDataUnsafe: { user?: TelegramUser; start_param?: string };
-  colorScheme: 'light' | 'dark';
   themeParams: TelegramThemeParams;
-  platform: string;
-  version: string;
-  isFullscreen?: boolean;
+  platform?: string;
   safeAreaInset?: TelegramInsets;
   contentSafeAreaInset?: TelegramInsets;
   ready: () => void;
@@ -49,9 +45,13 @@ export type TelegramWebApp = {
   disableVerticalSwipes?: () => void;
   enableVerticalSwipes?: () => void;
   MainButton: MainButton;
-  HapticFeedback?: { impactOccurred: (style: 'light' | 'medium' | 'heavy') => void; selectionChanged?: () => void };
-  onEvent: (event: 'themeChanged' | 'viewportChanged' | 'safeAreaChanged' | 'contentSafeAreaChanged', callback: () => void) => void;
-  offEvent: (event: 'themeChanged' | 'viewportChanged' | 'safeAreaChanged' | 'contentSafeAreaChanged', callback: () => void) => void;
+  HapticFeedback?: {
+    impactOccurred: (style: TelegramImpactStyle) => void;
+    selectionChanged?: () => void;
+    notificationOccurred?: (style: TelegramNotificationStyle) => void;
+  };
+  onEvent: (event: TelegramEvent, callback: () => void) => void;
+  offEvent: (event: TelegramEvent, callback: () => void) => void;
 };
 
 declare global {

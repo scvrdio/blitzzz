@@ -1,22 +1,35 @@
 # blitzzz
 
-Clean Next.js + React foundation for a Telegram Mini App, aligned with the architecture of [`look`](https://github.com/scvrdio/look).
+Telegram Mini App с тремя играми на Next.js 16, React 19 и TypeScript.
 
-## Start
+## Запуск
 
 ```bash
-cp .env.example .env.local
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Add `TELEGRAM_BOT_TOKEN` to `.env.local` before testing inside Telegram.
+Для авторизации внутри Telegram добавьте `TELEGRAM_BOT_TOKEN` в `.env.local`. Для multiplayer в Supabase должна быть включена анонимная авторизация и применены SQL-миграции из корня репозитория.
 
-## Structure
+## Архитектура
 
-- `src/app` — App Router pages and route handlers.
-- `src/components/telegram` — Telegram startup and authentication bridge.
-- `src/lib/telegram` — isolated WebApp API client and types.
-- `src/lib/server` — server-only validation of Telegram `initData`.
+- `src/app` — App Router, игровые маршруты, API и общие CSS-токены.
+- `src/components/ui` — небольшие доступные UI-примитивы.
+- `src/components/game` — общий игровой каркас: шапка, соперник, статус и рестарт.
+- `src/components/home` — каталог игр.
+- `src/features/*` — UI и игровая логика конкретной игры.
+- `src/features/*/engine.ts` — чистые, не зависящие от React игровые алгоритмы.
+- `src/hooks` — lifecycle-утилиты для таймеров, уведомлений и Telegram-профиля.
+- `src/lib/supabase` — единая точка создания клиента и анонимной сессии.
+- `src/lib/telegram` — типизированная граница Telegram WebApp API.
 
-The client never treats `initDataUnsafe` as trusted. The `/api/auth/telegram` endpoint validates `initData` using the bot token and rejects expired or forged requests.
+Игры являются обычными React-маршрутами и больше не загружаются через iframe. Старые адреса `*/index.html` перенаправляются на новые маршруты в `next.config.ts`.
+
+## Проверки
+
+```bash
+pnpm lint
+pnpm build
+```
+
+TypeScript проверяется в составе production-сборки; отдельно можно выполнить `pnpm exec tsc --noEmit`.

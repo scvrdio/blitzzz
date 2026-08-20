@@ -1,6 +1,13 @@
-import type { TelegramThemeParams, TelegramUser, TelegramWebApp } from './types';
+import type {
+  TelegramImpactStyle,
+  TelegramNotificationStyle,
+  TelegramThemeParams,
+  TelegramUser,
+  TelegramWebApp,
+} from './types';
 
-const getWebApp = (): TelegramWebApp | undefined => window.Telegram?.WebApp;
+const getWebApp = (): TelegramWebApp | undefined =>
+  typeof window === 'undefined' ? undefined : window.Telegram?.WebApp;
 
 export const telegram = {
   get isAvailable() {
@@ -12,38 +19,29 @@ export const telegram = {
   get user(): TelegramUser | undefined {
     return getWebApp()?.initDataUnsafe.user;
   },
+  get startParam() {
+    return getWebApp()?.initDataUnsafe.start_param;
+  },
   get themeParams(): TelegramThemeParams {
     return getWebApp()?.themeParams ?? {};
   },
-  init() {
-    const webApp = getWebApp();
-    if (!webApp) return;
-
-    webApp.ready();
-    webApp.expand();
-    webApp.disableVerticalSwipes?.();
-    webApp.setHeaderColor?.('bg_color');
-    webApp.setBackgroundColor?.('bg_color');
+  impact(style: TelegramImpactStyle = 'light') {
+    getWebApp()?.HapticFeedback?.impactOccurred?.(style);
   },
-  requestFullscreen() {
-    const webApp = getWebApp();
-    if (webApp?.platform === 'ios' || webApp?.platform === 'android') {
-      webApp.requestFullscreen?.();
-    }
+  selectionChanged() {
+    getWebApp()?.HapticFeedback?.selectionChanged?.();
   },
-  onThemeChange(callback: () => void) {
-    const webApp = getWebApp();
-    if (!webApp) return () => undefined;
-    webApp.onEvent('themeChanged', callback);
-    return () => webApp.offEvent('themeChanged', callback);
+  notify(style: TelegramNotificationStyle) {
+    getWebApp()?.HapticFeedback?.notificationOccurred?.(style);
   },
-  haptic(style: 'light' | 'medium' | 'heavy' = 'light') {
-    getWebApp()?.HapticFeedback?.impactOccurred(style);
+  setVerticalSwipes(disabled: boolean) {
+    const webApp = getWebApp();
+    if (disabled) webApp?.disableVerticalSwipes?.();
+    else webApp?.enableVerticalSwipes?.();
   },
   setMainButton(text: string, onClick: () => void) {
     const button = getWebApp()?.MainButton;
     if (!button) return () => undefined;
-
     button.setText(text);
     button.onClick(onClick);
     button.show();
@@ -56,3 +54,10 @@ export const telegram = {
     getWebApp()?.close();
   },
 };
+
+export function telegramProfile() {
+  const user = telegram.user;
+  if (!user) return null;
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || 'Игрок';
+  return { name, photoUrl: user.photo_url };
+}

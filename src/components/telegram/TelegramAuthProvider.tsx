@@ -15,13 +15,12 @@ export function useTelegramAuth() {
 }
 
 export function TelegramAuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({ status: 'loading' });
+  const [state, setState] = useState<AuthState>(() =>
+    telegram.isAvailable && telegram.initData ? { status: 'loading' } : { status: 'browser' },
+  );
 
   useEffect(() => {
-    if (!telegram.isAvailable || !telegram.initData) {
-      setState({ status: 'browser' });
-      return;
-    }
+    if (!telegram.isAvailable || !telegram.initData) return;
 
     void fetch('/api/auth/telegram', {
       method: 'POST',
