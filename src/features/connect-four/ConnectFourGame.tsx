@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { GameShell } from '../../components/game/GameShell';
 import { GameStatus } from '../../components/game/GameStatus';
@@ -36,10 +36,14 @@ function validRoom(value: unknown): value is ConnectFourRoom {
   return typeof room.id === 'string' && Array.isArray(room.board) && room.board.length === 6 && room.board.every((row) => Array.isArray(row) && row.length === 7);
 }
 
+const wait = (delay: number) => new Promise<void>((resolve) => window.setTimeout(resolve, delay));
+
 export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const [board, setBoard] = useState<ConnectFourBoard>(emptyConnectFourBoard);
   const [selected, setSelected] = useState(3);
   const [locked, setLocked] = useState(false);
+  const [dropping, setDropping] = useState(false);
+  const [localTurn, setLocalTurn] = useState<Chip>('blue');
   const [status, setStatus] = useState('Твой ход');
   const [winner, setWinner] = useState<Chip | 'draw' | null>(null);
   const [winningLine, setWinningLine] = useState<BoardPosition[]>([]);
@@ -48,7 +52,11 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const notice = useNotice();
   const timers = useTimeoutRegistry();
   const boardElementRef = useRef<HTMLDivElement>(null);
+  const boardWrapRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLElement>(null);
+  const previewRef = useRef<HTMLSpanElement>(null);
+  const holeLayerRef = useRef<HTMLDivElement>(null);
+  const bodyLayerRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const roomRef = useRef<ConnectFourRoom | null>(null);
   const boardRef = useRef(board);
@@ -56,6 +64,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const animationsRef = useRef(new Set<Animation>());
   const pendingMoveRef = useRef<{ row: number; column: number; chip: Chip } | null>(null);
   const remoteQueueRef = useRef(Promise.resolve());
+  const robotTurnRef = useRef(0);
 
   const myChip: Chip = room?.blue_player === userId ? 'blue' : room?.black_player === userId ? 'black' : 'blue';
   const opponent = useMemo(() => {
@@ -65,8 +74,78 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       ? { name: room.black_name || 'Соперник', avatar: room.black_avatar || undefined }
       : { name: room.blue_name || 'Соперник', avatar: room.blue_avatar || undefined };
   }, [myChip, room]);
+  const remotePreview = room?.status === 'active' && room.turn !== myChip && room.preview_player && room.preview_player !== userId && Number.isInteger(room.preview_column) ? room.preview_column : null;
+  const previewColumn = remotePreview ?? selected;
+  const previewChip: Chip = room?.status === 'active' ? room.turn : room ? myChip : localTurn;
 
   useEffect(() => { boardRef.current = board; }, [board]);
+
+  useLayoutEffect(() => {
+    const boardElement = boardElementRef.current;
+    const sheet = sheetRef.current;
+    const holes = holeLayerRef.current;
+    const body = bodyLayerRef.current;
+    if (!boardElement || !sheet || !holes || !body) return;
+
+    const rebuildFace = () => {
+      const sheetRect = sheet.getBoundingClientRect();
+      const cellRects = Array.from(boardElement.children, (cell) => cell.getBoundingClientRect());
+      holes.replaceChildren();
+      cellRects.forEach((rect) => {
+        const hole = document.createElement('span');
+        hole.className = 'connect-hole';
+        Object.assign(hole.style, {
+          left: `${rect.left - sheetRect.left}px`, top: `${rect.top - sheetRect.top}px`,
+          width: `${rect.width}px`, height: `${rect.height}px`,
+        });
+        holes.append(hole);
+      });
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', `0 0 ${sheetRect.width} ${sheetRect.height}`);
+      svg.setAttribute('preserveAspectRatio', 'none');
+      svg.style.cssText = 'display:block;width:100%;height:100%';
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const holePaths = cellRects.map((rect) => {
+        const radius = rect.width / 2;
+        const x = rect.left - sheetRect.left + radius;
+        const y = rect.top - sheetRect.top + radius;
+        return `M ${x - radius} ${y} a ${radius} ${radius} 0 1 0 ${radius * 2} 0 a ${radius} ${radius} 0 1 0 -${radius * 2} 0`;
+      }).join(' ');
+      path.setAttribute('d', `M 0 0 H ${sheetRect.width} V ${sheetRect.height} H 0 Z ${holePaths}`);
+      path.setAttribute('fill', '#ececec');
+      path.setAttribute('fill-rule', 'evenodd');
+      svg.append(path);
+      body.replaceChildren(svg);
+    };
+
+    rebuildFace();
+    const observer = new ResizeObserver(rebuildFace);
+    observer.observe(boardElement);
+    return () => observer.disconnect();
+  }, [board]);
+
+  useLayoutEffect(() => {
+    const preview = previewRef.current;
+    const boardElement = boardElementRef.current;
+    const sheet = sheetRef.current;
+    const column = previewColumn ?? 3;
+    if (!preview || !boardElement || !sheet || winner || firstOpenRow(board, column) < 0) return;
+    const target = boardElement.children[column] as HTMLElement | undefined;
+    const targetRow = firstOpenRow(board, column);
+    const landingCell = boardElement.children[targetRow * connectFourColumns + column] as HTMLElement | undefined;
+    if (!target || !landingCell) return;
+    const targetRect = target.getBoundingClientRect();
+    const landingRect = landingCell.getBoundingClientRect();
+    const sheetRect = sheet.getBoundingClientRect();
+    const trailInset = 2;
+    const previewTop = -40 - targetRect.width - trailInset;
+    Object.assign(preview.style, {
+      left: `${targetRect.left - sheetRect.left - trailInset}px`,
+      top: `${previewTop}px`,
+      width: `${targetRect.width + trailInset * 2}px`,
+      height: `${landingRect.bottom - sheetRect.top - previewTop}px`,
+    });
+  }, [board, previewColumn, winner]);
 
   const animateDrop = async (column: number, row: number, chip: Chip) => {
     const boardElement = boardElementRef.current;
@@ -75,11 +154,14 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     if (!target || !sheet) return;
     const targetRect = target.getBoundingClientRect();
     const sheetRect = sheet.getBoundingClientRect();
+    const previewRect = previewRef.current?.getBoundingClientRect();
     const falling = document.createElement('span');
     falling.className = `connect-falling-chip connect-falling-chip--${chip}`;
-    Object.assign(falling.style, { width: `${targetRect.width}px`, height: `${targetRect.height}px`, left: `${targetRect.left - sheetRect.left}px`, top: `${-targetRect.height - 8}px` });
+    const startTop = previewRect ? previewRect.top - sheetRect.top + 2 : -targetRect.height - 40;
+    Object.assign(falling.style, { width: `${targetRect.width}px`, height: `${targetRect.height}px`, left: `${targetRect.left - sheetRect.left}px`, top: `${startTop}px` });
     sheet.append(falling);
-    const distance = targetRect.top - sheetRect.top + targetRect.height + 8;
+    setDropping(true);
+    const distance = targetRect.top - sheetRect.top - startTop;
     const animation = falling.animate([
       { transform: 'translateY(0)' },
       { transform: 'translateY(-16px)', offset: .2, easing: 'cubic-bezier(.2,0,.2,1)' },
@@ -89,6 +171,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     await animation.finished.catch(() => undefined);
     animationsRef.current.delete(animation);
     falling.remove();
+    setDropping(false);
     telegram.impact('medium');
   };
 
@@ -183,24 +266,54 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     };
   }, [initialRoomId]);
 
+  const moveSelectionThroughColumns = async (column: number) => {
+    let current = selected;
+    const direction = Math.sign(column - current);
+    while (direction && current !== column) {
+      current += direction;
+      setSelected(current);
+      telegram.selectionChanged();
+      publishPreview(current);
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await wait(10);
+    }
+  };
+
   const runRobot = (current: ConnectFourBoard) => {
+    const turn = ++robotTurnRef.current;
+    const start = firstOpenRow(current, 3) >= 0 ? 3 : availableColumns(current)[0] ?? 3;
     setLocked(true);
     setStatus('Ход соперника');
+    setLocalTurn('black');
+    setSelected(start);
     timers.schedule(() => {
-      const column = chooseRobotColumn(current);
-      setSelected(column);
-      timers.schedule(async () => {
+      void (async () => {
+        await wait(1000);
+        if (!mountedRef.current || robotTurnRef.current !== turn) return;
+        const column = chooseRobotColumn(current);
+        let previewColumn = start;
+        const direction = Math.sign(column - previewColumn);
+        while (direction && previewColumn !== column) {
+          previewColumn += direction;
+          setSelected(previewColumn);
+          await wait(90);
+          if (!mountedRef.current || robotTurnRef.current !== turn) return;
+        }
+        await wait(220);
+        if (!mountedRef.current || robotTurnRef.current !== turn) return;
         const placed = placeChip(current, column, 'black');
         if (!placed) return;
         await animateDrop(column, placed.row, 'black');
+        if (!mountedRef.current || robotTurnRef.current !== turn) return;
         setBoard(placed.board);
         const line = findWinningLine(placed.board, placed.row, column, 'black');
         if (line) return finish('black', line);
         if (placed.board.flat().every(Boolean)) return finish('draw');
+        setLocalTurn('blue');
         setSelected(firstOpenRow(placed.board, 3) >= 0 ? 3 : availableColumns(placed.board)[0] ?? 3);
         setLocked(false);
         setStatus('Твой ход');
-      }, 300);
+      })();
     }, 520);
   };
 
@@ -211,8 +324,11 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     telegram.impact('light');
     const placed = placeChip(board, column, chip);
     if (!placed) return;
-    setSelected(column);
     setLocked(true);
+    await moveSelectionThroughColumns(column);
+    if (!mountedRef.current) return;
+    await wait(200);
+    if (!mountedRef.current) return;
     pendingMoveRef.current = { row: placed.row, column, chip };
     const request = room ? supabase.rpc('make_connect_four_move', { room_id: room.id, selected_column: column }) : null;
     await animateDrop(column, placed.row, chip);
@@ -249,10 +365,12 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       return;
     }
     timers.clearAll();
+    robotTurnRef.current += 1;
     const empty = emptyConnectFourBoard();
     boardRef.current = empty;
     setBoard(empty);
     setSelected(3);
+    setLocalTurn('blue');
     setLocked(false);
     setWinner(null);
     setWinningLine([]);
@@ -282,18 +400,16 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     }
   };
 
-  const remotePreview = room?.status === 'active' && room.turn !== myChip && room.preview_player && room.preview_player !== userId && Number.isInteger(room.preview_column) ? room.preview_column : null;
-  const previewColumn = remotePreview ?? selected;
-  const previewChip: Chip = remotePreview === null ? myChip : room?.turn ?? 'black';
-
   return (
     <GameShell title="Четыре в ряд" opponent={opponent} onInvite={invite} notice={notice.message}>
       <section className="game-content connect-game">
         <GameStatus muted={locked || winner === 'black'}>{status}</GameStatus>
         <div className="connect-drop-zone" aria-hidden="true" />
         <section className="connect-sheet" ref={sheetRef} aria-label="Игровое поле">
-          {!winner && firstOpenRow(board, previewColumn ?? 3) >= 0 && <span className={`connect-preview connect-preview--${previewChip}`} style={{ left: `calc(${(previewColumn ?? 3) * (100 / 7)}% + ${100 / 14}% - 12px)` }} aria-hidden="true" />}
-          <div className="connect-board-wrap">
+          <div className="connect-hole-layer" ref={holeLayerRef} aria-hidden="true" />
+          {!dropping && !winner && firstOpenRow(board, previewColumn ?? 3) >= 0 && <span ref={previewRef} className={`connect-preview connect-preview--${previewChip}`} aria-hidden="true" />}
+          <div className="connect-body-layer" ref={bodyLayerRef} aria-hidden="true" />
+          <div className="connect-board-wrap" ref={boardWrapRef}>
             <div className="connect-board" ref={boardElementRef} aria-hidden="true">
               {board.flatMap((row, rowIndex) => row.map((chip, column) => {
                 const isHint = !locked && !chip && rowIndex === firstOpenRow(board, column) && column === selected;

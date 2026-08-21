@@ -1,16 +1,8 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
-import { Merriweather } from 'next/font/google';
 import { TelegramBoot } from '../components/telegram/TelegramBoot';
 import { TelegramAuthProvider } from '../components/telegram/TelegramAuthProvider';
 import './globals.css';
-
-const merriweather = Merriweather({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '700', '900'],
-  variable: '--font-merriweather',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'blitzzz',
@@ -36,7 +28,7 @@ const initialTelegramLayout = `
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru" suppressHydrationWarning>
-      <body className={merriweather.variable}>
+      <body>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <Script id="telegram-initial-layout" strategy="beforeInteractive">{initialTelegramLayout}</Script>
         <TelegramBoot />

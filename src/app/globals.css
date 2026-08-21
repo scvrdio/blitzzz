@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&display=swap');
 @import './tokens.css';
 
 * { box-sizing: border-box; }
@@ -55,11 +56,13 @@ a { color: inherit; }
 
 .game-screen { position: relative; width: min(100%, var(--container-width)); height: min(100%, var(--frame-height)); min-height: min(670px, 100%); margin: auto; overflow: hidden; display: flex; flex-direction: column; background: var(--color-background); border-radius: var(--radius-frame); }
 .game-header { height: 76px; flex: none; position: relative; z-index: 10; padding: var(--space-4); display: flex; justify-content: flex-end; align-items: flex-start; }
-.game-header__invite { position: absolute; top: var(--space-4); left: var(--space-4); }
+.game-header__invite { position: absolute; top: var(--space-4); left: var(--space-4); width: 44px; height: 44px; min-height: 44px; padding: 14px; }
+.game-header__invite img { display: block; width: 16px; height: 16px; }
 .game-header__title { position: absolute; inset: 22px 0 auto; margin: 0; pointer-events: none; text-align: center; font-size: var(--font-size-lg); line-height: 29px; }
 .game-header .player-badge { position: absolute; top: 59px; left: 50%; transform: translateX(-50%); }
-.game-header__exit { position: relative; z-index: 1; }
-.game-header__exit svg { width: 24px; height: 24px; }
+.game-header__exit { position: relative; z-index: 1; display: block; width: 44px; height: 44px; border-radius: 50%; transition: transform var(--motion-fast) ease; }
+.game-header__exit img { display: block; width: 44px; height: 44px; }
+.game-header__exit:active { transform: scale(.92); }
 .game-content { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--space-8); }
 .game-status { flex: 1; display: grid; place-items: center; width: 100%; padding-top: 18px; color: var(--color-primary); text-align: center; font-size: var(--font-size-display); font-weight: var(--weight-black); line-height: var(--line-height-tight); }
 .game-status--muted { color: var(--color-foreground); }
@@ -104,24 +107,28 @@ a { color: inherit; }
 
 .connect-game { gap: 0; }
 .connect-drop-zone { flex: none; width: 100%; height: 48px; }
-.connect-sheet { flex: none; position: relative; width: 100%; padding: var(--space-4) var(--space-4) var(--space-16); border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--color-surface); }
-.connect-board-wrap { position: relative; z-index: 2; }
-.connect-board { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); }
-.connect-cell { aspect-ratio: 1; min-width: 0; border-radius: 50%; background: var(--color-background); }
-.connect-column-buttons { position: absolute; z-index: 3; inset: 0; display: grid; grid-template-columns: repeat(7, 1fr); }
+.connect-sheet { --connect-cell-gap: var(--space-2); --connect-cell-size: calc((100% - 48px) * .142857); flex: none; position: relative; width: 100%; padding: var(--space-4) var(--space-4) var(--space-16); border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--color-surface); }
+.connect-board-wrap { position: relative; }
+.connect-hole-layer, .connect-body-layer { position: absolute; inset: 0; pointer-events: none; }
+.connect-hole-layer { z-index: 0; }
+.connect-hole { position: absolute; border-radius: 50%; background: var(--color-background); }
+.connect-body-layer { z-index: 2; overflow: hidden; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+.connect-board { position: relative; z-index: 3; display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--connect-cell-gap); }
+.connect-cell { aspect-ratio: 1; min-width: 0; border-radius: 50%; background: transparent; }
+.connect-column-buttons { position: absolute; z-index: 4; inset: 0; display: grid; grid-template-columns: repeat(7, 1fr); }
 .connect-column-buttons button { border: 0; padding: 0; background: transparent; cursor: pointer; }
 .connect-column-buttons button:disabled { cursor: default; }
 .connect-cell--blue { background: var(--color-primary); }
 .connect-cell--black { background: var(--color-foreground); }
-.connect-cell.is-hint-blue { box-shadow: inset 0 0 0 3px var(--color-primary); }
-.connect-cell.is-hint-black { box-shadow: inset 0 0 0 3px var(--color-foreground); }
+.connect-cell.is-hint-blue { outline: 3px solid var(--color-primary); outline-offset: -3px; }
+.connect-cell.is-hint-black { outline: 3px solid var(--color-foreground); outline-offset: -3px; }
 .connect-cell.is-winning { filter: brightness(1.2); }
-.connect-preview { position: absolute; z-index: 1; top: -42px; width: 24px; height: 76px; border-radius: var(--radius-round) var(--radius-round) 0 0; opacity: .9; pointer-events: none; transition: left var(--motion-fast) ease; }
-.connect-preview::after { content: ''; position: absolute; inset: 2px auto auto 2px; width: 20px; height: 20px; border-radius: 50%; }
-.connect-preview--blue { background: var(--color-primary-trail); }
-.connect-preview--blue::after { background: var(--color-primary); }
-.connect-preview--black { background: var(--color-foreground-trail); }
-.connect-preview--black::after { background: var(--color-foreground); }
+.connect-preview { --connect-chip: var(--color-primary); --connect-trail: var(--color-primary-trail); position: absolute; z-index: 1; border-radius: var(--radius-round) var(--radius-round) 0 0; background: var(--connect-trail); pointer-events: none; }
+.connect-preview::after { content: ''; position: absolute; inset: 2px auto auto 2px; width: calc(100% - 4px); aspect-ratio: 1; border-radius: 50%; }
+.connect-preview--blue { --connect-chip: var(--color-primary); --connect-trail: var(--color-primary-trail); }
+.connect-preview--blue::after { background: var(--connect-chip); }
+.connect-preview--black { --connect-chip: var(--color-foreground); --connect-trail: var(--color-foreground-trail); }
+.connect-preview--black::after { background: var(--connect-chip); }
 .connect-falling-chip { position: absolute; z-index: 1; border-radius: 50%; pointer-events: none; }
 .connect-falling-chip--blue { background: var(--color-primary); }
 .connect-falling-chip--black { background: var(--color-foreground); }

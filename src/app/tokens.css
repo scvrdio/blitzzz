@@ -14,7 +14,7 @@
   --color-destructive: #c62828;
   --color-overlay: rgba(255, 255, 255, 0.56);
 
-  --font-family-brand: var(--font-merriweather), Georgia, serif;
+  --font-family-brand: 'Merriweather', Georgia, serif;
   --font-size-xs: 12px;
   --font-size-sm: 14px;
   --font-size-md: 16px;
