@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { GameFooter } from '../../components/game/GameFooter';
 import { GameShell } from '../../components/game/GameShell';
@@ -14,6 +13,22 @@ type Cell = Mark | null;
 type Result = Mark | 'draw' | null;
 
 const winningLines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]] as const;
+
+function TicMark({ mark }: { mark: Mark }) {
+  if (mark === 'x') {
+    return (
+      <svg className="tic-mark tic-mark--x" viewBox="0 0 53.6562 53.6562" aria-hidden="true">
+        <path d="M53.6562 5.65625L35.3128 23.9997C33.7507 25.5618 33.7507 28.0945 35.3128 29.6566L53.6562 48L48 53.6562L29.6566 35.3128C28.0945 33.7507 25.5618 33.7507 23.9997 35.3128L5.65625 53.6562L0 48L18.3434 29.6566C19.9055 28.0945 19.9055 25.5618 18.3434 23.9997L0 5.65625L5.65625 0L23.9997 18.3434C25.5618 19.9055 28.0945 19.9055 29.6566 18.3434L48 0L53.6562 5.65625Z" fill="#004cff" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="tic-mark tic-mark--o" viewBox="0 0 56 56" aria-hidden="true">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#000" strokeWidth="8" />
+    </svg>
+  );
+}
 
 function winner(cells: readonly Cell[]) {
   return winningLines.find(([a, b, c]) => cells[a] && cells[a] === cells[b] && cells[b] === cells[c]) ?? null;
@@ -97,7 +112,7 @@ export function TicTacToeGame() {
         <div className="tic-board" aria-label="Поле крестиков-ноликов">
           {cells.map((cell, index) => (
             <button key={index} type="button" className={`tic-cell${cell ? ` tic-cell--${cell}` : ''}`} aria-label={cell ? `Ячейка ${index + 1}: ${cell === 'x' ? 'крестик' : 'нолик'}` : `Ячейка ${index + 1}`} disabled={robotThinking || Boolean(result) || Boolean(cell)} onClick={() => move(index)}>
-              {cell && <Image className={`tic-mark tic-mark--${cell}`} src={cell === 'x' ? '/icons/tic-cross.svg' : '/icons/tic-circle.svg'} width={cell === 'x' ? 53.6562 : 56} height={cell === 'x' ? 53.6562 : 56} alt="" aria-hidden="true" />}
+              {cell ? <TicMark mark={cell} /> : null}
             </button>
           ))}
         </div>

@@ -154,7 +154,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       width: `${targetRect.width + trailInset * 2}px`,
       height: `${landingRect.bottom - sheetRect.top - previewTop}px`,
     });
-  }, [board, previewColumn, winner]);
+  }, [board, dropping, previewColumn, winner]);
 
   const animateDrop = async (column: number, row: number, chip: Chip) => {
     const boardElement = boardElementRef.current;
@@ -417,7 +417,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       onInvite={invite}
       notice={notice.message}
       status={status}
-      statusMuted={locked || winner === 'black'}
+      statusMuted={status === 'Ход соперника' || status === 'Поражение' || status === 'Ничья'}
       game={
         <section className="connect-sheet" ref={sheetRef} aria-label="Игровое поле">
           <div className="connect-hole-layer" ref={holeLayerRef} aria-hidden="true" />
