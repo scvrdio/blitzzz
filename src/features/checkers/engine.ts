@@ -24,23 +24,59 @@ export function initialCheckersBoard(): CheckerCell[] {
   return board;
 }
 
-export function pieceMoves(index: number, capturesOnly: boolean, board: readonly CheckerCell[]): CheckerMove[] {
+export function pieceMoves(index: number, capturesOnly: boolean, board: readonly CheckerCell[], captured: readonly number[] = []): CheckerMove[] {
   const piece = board[index];
   if (!piece) return [];
   const pieceRow = row(index);
   const column = index % 8;
-  const directions = isKing(piece) ? [-1, 1] : checkerColor(piece) === 'blue' ? [-1] : [1];
+  const capturedSet = new Set(captured);
   const moves: CheckerMove[] = [];
-  for (const rowDirection of directions) {
+
+  if (isKing(piece)) {
+    for (const rowDirection of [-1, 1]) {
+      for (const columnDirection of [-1, 1]) {
+        let nextRow = pieceRow + rowDirection;
+        let nextColumn = column + columnDirection;
+        while (inside(nextRow, nextColumn) && !board[nextRow * 8 + nextColumn]) {
+          if (!capturesOnly) moves.push({ from: index, to: nextRow * 8 + nextColumn, capture: null });
+          nextRow += rowDirection;
+          nextColumn += columnDirection;
+        }
+        if (!inside(nextRow, nextColumn)) continue;
+        const capture = nextRow * 8 + nextColumn;
+        if (checkerColor(board[capture]) === checkerColor(piece) || capturedSet.has(capture)) continue;
+        nextRow += rowDirection;
+        nextColumn += columnDirection;
+        while (inside(nextRow, nextColumn) && !board[nextRow * 8 + nextColumn]) {
+          moves.push({ from: index, to: nextRow * 8 + nextColumn, capture });
+          nextRow += rowDirection;
+          nextColumn += columnDirection;
+        }
+      }
+    }
+    return capturesOnly ? moves.filter((move) => move.capture !== null) : moves;
+  }
+
+  if (!capturesOnly) {
+    const rowDirection = checkerColor(piece) === 'blue' ? -1 : 1;
     for (const columnDirection of [-1, 1]) {
       const nearRow = pieceRow + rowDirection;
       const nearColumn = column + columnDirection;
       if (!inside(nearRow, nearColumn)) continue;
       const near = nearRow * 8 + nearColumn;
-      if (!board[near] && !capturesOnly) moves.push({ from: index, to: near, capture: null });
+      if (!board[near]) moves.push({ from: index, to: near, capture: null });
+    }
+  }
+
+  for (const rowDirection of [-1, 1]) {
+    for (const columnDirection of [-1, 1]) {
+      const nearRow = pieceRow + rowDirection;
+      const nearColumn = column + columnDirection;
+      if (!inside(nearRow, nearColumn)) continue;
+      const near = nearRow * 8 + nearColumn;
       const farRow = pieceRow + rowDirection * 2;
       const farColumn = column + columnDirection * 2;
-      if (inside(farRow, farColumn) && board[near] && checkerColor(board[near]) !== checkerColor(piece)) {
+      if (inside(farRow, farColumn) && board[near] && checkerColor(board[near]) !== checkerColor(piece) && !capturedSet.has(near)) {
         const far = farRow * 8 + farColumn;
         if (!board[far]) moves.push({ from: index, to: far, capture: near });
       }
@@ -49,34 +85,52 @@ export function pieceMoves(index: number, capturesOnly: boolean, board: readonly
   return capturesOnly ? moves.filter((move) => move.capture !== null) : moves;
 }
 
-export function legalMoves(color: CheckerColor, board: readonly CheckerCell[], only: number | null = null) {
+export function legalMoves(color: CheckerColor, board: readonly CheckerCell[], only: number | null = null, captured: readonly number[] = []) {
+  if (only !== null) return checkerColor(board[only]) === color ? pieceMoves(only, true, board, captured) : [];
   const pieces = only === null ? board.map((_, index) => index) : [only];
-  const moves = pieces.flatMap((index) => checkerColor(board[index]) === color ? pieceMoves(index, false, board) : []);
+  const moves = pieces.flatMap((index) => checkerColor(board[index]) === color ? pieceMoves(index, false, board, captured) : []);
   const captures = moves.filter((move) => move.capture !== null);
   return captures.length ? captures : moves;
 }
 
-export function applyCheckerMove(board: readonly CheckerCell[], move: CheckerMove) {
+export function applyCheckerMove(board: readonly CheckerCell[], move: CheckerMove, removeCaptured = true) {
   const next = [...board];
   const piece = next[move.from];
   next[move.from] = null;
   next[move.to] = piece;
-  if (move.capture !== null) next[move.capture] = null;
+  if (removeCaptured && move.capture !== null) next[move.capture] = null;
   if (next[move.to] === 'blue' && row(move.to) === 0) next[move.to] = 'blue-king';
   if (next[move.to] === 'black' && row(move.to) === 7) next[move.to] = 'black-king';
   return next;
 }
 
+export function completeCheckerTurn(board: readonly CheckerCell[], captured: readonly number[]) {
+  const next = [...board];
+  captured.forEach((index) => { next[index] = null; });
+  return next;
+}
+
 type MoveSequence = CheckerMove[];
 
-function turnSequences(color: CheckerColor, board: readonly CheckerCell[], only: number | null = null, prefix: MoveSequence = []): MoveSequence[] {
-  const moves = legalMoves(color, board, only);
+function turnSequences(color: CheckerColor, board: readonly CheckerCell[], only: number | null = null, prefix: MoveSequence = [], captured: readonly number[] = []): MoveSequence[] {
+  const moves = legalMoves(color, board, only, captured);
   if (!moves.length) return prefix.length ? [prefix] : [];
   return moves.flatMap((move) => {
-    const next = applyCheckerMove(board, move);
-    const follow = move.capture === null ? [] : pieceMoves(move.to, true, next);
-    return follow.length ? turnSequences(color, next, move.to, [...prefix, move]) : [[...prefix, move]];
+    const nextCaptured = move.capture === null ? captured : [...captured, move.capture];
+    const next = applyCheckerMove(board, move, false);
+    const follow = move.capture === null ? [] : pieceMoves(move.to, true, next, nextCaptured);
+    return follow.length ? turnSequences(color, next, move.to, [...prefix, move], nextCaptured) : [[...prefix, move]];
   });
+}
+
+function applySequence(board: readonly CheckerCell[], sequence: MoveSequence, captured: readonly number[] = []) {
+  let next = [...board];
+  const nextCaptured = [...captured];
+  sequence.forEach((move) => {
+    next = applyCheckerMove(next, move, false);
+    if (move.capture !== null) nextCaptured.push(move.capture);
+  });
+  return completeCheckerTurn(next, nextCaptured);
 }
 
 function positionScore(board: readonly CheckerCell[]) {
@@ -96,8 +150,8 @@ function sequenceScore(sequence: MoveSequence) {
   return sequence.reduce((score, move, index) => score + (move.capture === null ? 0 : 80) + (index ? 18 : 0), 0) + (lastColumn % 8 >= 2 && lastColumn % 8 <= 5 ? 5 : 0);
 }
 
-function orderedSequences(color: CheckerColor, board: readonly CheckerCell[], only: number | null = null) {
-  return turnSequences(color, board, only).sort((a, b) => sequenceScore(b) - sequenceScore(a));
+function orderedSequences(color: CheckerColor, board: readonly CheckerCell[], only: number | null = null, captured: readonly number[] = []) {
+  return turnSequences(color, board, only, [], captured).sort((a, b) => sequenceScore(b) - sequenceScore(a));
 }
 
 function minimax(board: readonly CheckerCell[], color: CheckerColor, depth: number, alpha = -Infinity, beta = Infinity): number {
@@ -107,7 +161,7 @@ function minimax(board: readonly CheckerCell[], color: CheckerColor, depth: numb
   if (color === 'black') {
     let best = -Infinity;
     for (const sequence of sequences) {
-      best = Math.max(best, minimax(sequence.reduce(applyCheckerMove, [...board]), 'blue', depth - 1, alpha, beta));
+      best = Math.max(best, minimax(applySequence(board, sequence), 'blue', depth - 1, alpha, beta));
       alpha = Math.max(alpha, best);
       if (alpha >= beta) break;
     }
@@ -115,25 +169,25 @@ function minimax(board: readonly CheckerCell[], color: CheckerColor, depth: numb
   }
   let best = Infinity;
   for (const sequence of sequences) {
-    best = Math.min(best, minimax(sequence.reduce(applyCheckerMove, [...board]), 'black', depth - 1, alpha, beta));
+    best = Math.min(best, minimax(applySequence(board, sequence), 'black', depth - 1, alpha, beta));
     beta = Math.min(beta, best);
     if (alpha >= beta) break;
   }
   return best;
 }
 
-export function chooseBotMove(board: readonly CheckerCell[], difficulty: number, only: number | null = null) {
-  const moves = legalMoves('black', board, only);
+export function chooseBotMove(board: readonly CheckerCell[], difficulty: number, only: number | null = null, captured: readonly number[] = []) {
+  const moves = legalMoves('black', board, only, captured);
   if (!moves.length) return null;
   if (difficulty === 0) return moves[Math.floor(Math.random() * moves.length)];
   const pieceCount = board.filter(Boolean).length;
   const depths = [0, 1, pieceCount > 16 ? 2 : 3, pieceCount > 16 ? 3 : 4, pieceCount > 16 ? 4 : 5];
   const depth = depths[difficulty] ?? 2;
-  const sequences = orderedSequences('black', board, only).filter((sequence) => moves.some((move) => move.from === sequence[0]?.from && move.to === sequence[0]?.to));
+  const sequences = orderedSequences('black', board, only, captured).filter((sequence) => moves.some((move) => move.from === sequence[0]?.from && move.to === sequence[0]?.to));
   let best = sequences[0];
   let bestScore = -Infinity;
   for (const sequence of sequences) {
-    const next = sequence.reduce(applyCheckerMove, [...board]);
+    const next = applySequence(board, sequence, captured);
     const score = (depth === 1 ? positionScore(next) : minimax(next, 'blue', depth - 1)) + sequenceScore(sequence);
     if (score > bestScore) { bestScore = score; best = sequence; }
   }

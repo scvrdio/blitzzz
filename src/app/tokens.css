@@ -6,6 +6,7 @@
   --color-muted: rgba(0, 0, 0, 0.5);
   --color-border: #d6d6d6;
   --color-primary: #004cff;
+  --color-primary-muted: #d4dcee;
   --color-primary-soft: rgba(0, 76, 255, 0.32);
   --color-primary-trail: rgba(0, 76, 255, 0.3);
   --color-foreground-trail: rgba(17, 17, 17, 0.3);
@@ -13,16 +14,19 @@
   --color-warning: #9a6700;
   --color-destructive: #c62828;
   --color-overlay: rgba(255, 255, 255, 0.56);
+  --color-control-dot: #e3e3e3;
 
   --font-family-brand: 'Merriweather', Georgia, serif;
   --font-size-xs: 12px;
   --font-size-sm: 14px;
   --font-size-md: 16px;
+  --font-size-card-title: 18px;
   --font-size-lg: 20px;
   --font-size-display: 32px;
   --line-height-tight: 1.2;
   --line-height-body: 1.5;
   --weight-regular: 400;
+  --weight-semibold: 600;
   --weight-bold: 700;
   --weight-black: 900;
 
@@ -47,6 +51,7 @@
   --size-control-large: 48px;
   --size-action: 56px;
   --container-width: 450px;
+  --game-container-width: 393px;
   --frame-height: 852px;
   --z-toast: 30;
 

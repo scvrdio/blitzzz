@@ -2,17 +2,15 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import type { RealtimeChannel, User } from '@supabase/supabase-js';
+import { GameFooter, type GameFooterSliderValue } from '../../components/game/GameFooter';
 import { GameShell } from '../../components/game/GameShell';
-import { GameStatus } from '../../components/game/GameStatus';
-import { RestartButton } from '../../components/game/RestartButton';
 import { classNames } from '../../lib/class-names';
 import { ensureAnonymousUser, supabase } from '../../lib/supabase/client';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { telegram, telegramProfile } from '../../lib/telegram/client';
 import { useNotice } from '../../hooks/use-notice';
 import { useTimeoutRegistry } from '../../hooks/use-timeout-registry';
-import { DifficultySlider } from './DifficultySlider';
-import { applyCheckerMove, checkerColor, chooseBotMove, initialCheckersBoard, isKing, legalMoves, pieceMoves, type CheckerCell, type CheckerColor } from './engine';
+import { applyCheckerMove, checkerColor, chooseBotMove, completeCheckerTurn, initialCheckersBoard, isKing, legalMoves, pieceMoves, type CheckerCell, type CheckerColor } from './engine';
 
 type CheckersRoom = {
   id: string;
@@ -29,6 +27,7 @@ type CheckersRoom = {
 
 const columns = 'ABCDEFGH';
 const rows = '12345678';
+const difficultyLabels = ['Очень легко', 'Легко', 'Нормально', 'Сложно', 'Очень сложно'] as const;
 
 function validRoom(value: unknown): value is CheckersRoom {
   if (!value || typeof value !== 'object') return false;
@@ -40,10 +39,11 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
   const [cells, setCells] = useState<CheckerCell[]>(initialCheckersBoard);
   const [selected, setSelected] = useState<number | null>(null);
   const [chainPiece, setChainPiece] = useState<number | null>(null);
+  const [capturedThisTurn, setCapturedThisTurn] = useState<number[]>([]);
   const [locked, setLocked] = useState(false);
   const [status, setStatus] = useState('Твой ход');
   const [finished, setFinished] = useState<CheckerColor | null>(null);
-  const [difficulty, setDifficulty] = useState(2);
+  const [difficulty, setDifficulty] = useState<GameFooterSliderValue>(2);
   const [started, setStarted] = useState(false);
   const [room, setRoom] = useState<CheckersRoom | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -55,11 +55,11 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
 
   const myColor: CheckerColor = room?.blue_player === userId ? 'blue' : room?.black_player === userId ? 'black' : 'blue';
   const flipped = Boolean(room && myColor === 'black');
-  const available = useMemo(() => selected === null ? [] : legalMoves(myColor, cells, chainPiece).filter((move) => move.from === selected), [cells, chainPiece, myColor, selected]);
+  const available = useMemo(() => selected === null ? [] : legalMoves(myColor, cells, chainPiece, capturedThisTurn).filter((move) => move.from === selected), [capturedThisTurn, cells, chainPiece, myColor, selected]);
   const opponent = useMemo(() => {
     if (!room) return { name: 'Соперник Робот' };
     if (room.status === 'waiting') return { name: 'Ждём соперника' };
-    return { name: myColor === 'blue' ? room.black_name || 'Соперник' : room.blue_name || 'Соперник' };
+    return { name: myColor === 'blue' ? room.black_name || 'Игрок' : room.blue_name || 'Игрок', multiplayer: true };
   }, [myColor, room]);
 
   const finish = (winner: CheckerColor) => {
@@ -67,6 +67,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     setLocked(true);
     setSelected(null);
     setChainPiece(null);
+    setCapturedThisTurn([]);
     setStatus(winner === myColor ? 'Победа' : 'Поражение');
     telegram.notify(winner === myColor ? 'success' : 'error');
   };
@@ -81,6 +82,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     setStarted(true);
     setSelected(null);
     setChainPiece(null);
+    setCapturedThisTurn([]);
     const color: CheckerColor = next.blue_player === currentUserId ? 'blue' : 'black';
     if (next.status === 'finished' && next.winner) {
       setFinished(next.winner);
@@ -133,17 +135,20 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     };
   }, [initialRoomId]);
 
-  const runBotMove = (board: CheckerCell[], only: number | null, delay: number) => {
+  const runBotMove = (board: CheckerCell[], only: number | null, delay: number, captured: readonly number[] = []) => {
     setLocked(true);
     setStatus('Ход соперника');
     timers.schedule(() => {
-      const move = chooseBotMove(board, difficulty, only);
+      const move = chooseBotMove(board, difficulty, only, captured);
       if (!move) return finish('blue');
-      const next = applyCheckerMove(board, move);
-      setCells(next);
+      const nextCaptured = move.capture === null ? captured : [...captured, move.capture];
+      const nextStep = applyCheckerMove(board, move, false);
+      setCells(nextStep);
       if (move.capture !== null) telegram.impact('medium');
-      const follow = move.capture === null ? [] : pieceMoves(move.to, true, next);
-      if (follow.length) return runBotMove(next, move.to, 240);
+      const follow = move.capture === null ? [] : pieceMoves(move.to, true, nextStep, nextCaptured);
+      if (follow.length) return runBotMove(nextStep, move.to, 240, nextCaptured);
+      const next = completeCheckerTurn(nextStep, nextCaptured);
+      setCells(next);
       if (!legalMoves('blue', next).length) return finish('black');
       timers.schedule(() => { setLocked(false); setStatus('Твой ход'); }, 240);
     }, delay);
@@ -166,7 +171,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
 
   const tap = (index: number) => {
     if (locked || finished) return;
-    const moves = legalMoves(myColor, cells, chainPiece);
+    const moves = legalMoves(myColor, cells, chainPiece, capturedThisTurn);
     if (checkerColor(cells[index]) === myColor && moves.some((move) => move.from === index)) {
       setSelected(index);
       telegram.selectionChanged();
@@ -174,18 +179,23 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     }
     const move = selected === null ? null : moves.find((candidate) => candidate.from === selected && candidate.to === index);
     if (!move) return;
-    const next = applyCheckerMove(cells, move);
-    setCells(next);
+    const nextCaptured = move.capture === null ? capturedThisTurn : [...capturedThisTurn, move.capture];
+    const nextStep = applyCheckerMove(cells, move, false);
     setStarted(true);
     telegram.impact(move.capture === null ? 'light' : 'medium');
-    const follow = move.capture === null ? [] : pieceMoves(move.to, true, next);
+    const follow = move.capture === null ? [] : pieceMoves(move.to, true, nextStep, nextCaptured);
     if (follow.length) {
+      setCells(nextStep);
       setSelected(move.to);
       setChainPiece(move.to);
+      setCapturedThisTurn(nextCaptured);
       return;
     }
+    const next = completeCheckerTurn(nextStep, nextCaptured);
+    setCells(next);
     setSelected(null);
     setChainPiece(null);
+    setCapturedThisTurn([]);
     if (room) void saveMultiplayerMove(next);
     else timers.schedule(() => runBotMove(next, null, 450), 120);
   };
@@ -202,6 +212,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     setCells(initialCheckersBoard());
     setSelected(null);
     setChainPiece(null);
+    setCapturedThisTurn([]);
     setLocked(false);
     setFinished(null);
     setStarted(false);
@@ -236,9 +247,15 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
   const displayedRows = flipped ? [...rows].reverse() : [...rows];
 
   return (
-    <GameShell title="Шашки" opponent={opponent} onInvite={invite} notice={notice.message}>
-      <section className="game-content">
-        <GameStatus muted={locked || (finished !== null && finished !== myColor)}>{status}</GameStatus>
+    <GameShell
+      title="Шашки"
+      opponent={opponent}
+      onInvite={invite}
+      notice={notice.message}
+      status={status}
+      statusMuted={locked || (finished !== null && finished !== myColor)}
+      gameInset={false}
+      game={
         <section className="checkers-sheet" aria-label="Поле шашек">
           <div className="checkers-layout">
             <div className="checkers-columns checkers-columns--top">{displayedColumns.map((label) => <span key={label}>{label}</span>)}</div>
@@ -254,9 +271,12 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
             <div className="checkers-columns checkers-columns--bottom">{displayedColumns.map((label) => <span key={label}>{label}</span>)}</div>
           </div>
         </section>
-        {!started && !room && <DifficultySlider value={difficulty} onChange={setDifficulty} />}
-        {finished && <RestartButton onClick={restart} />}
-      </section>
-    </GameShell>
+      }
+      footer={finished
+        ? <GameFooter variant="button" onPlayAgain={restart} />
+        : !started && !room
+          ? <GameFooter variant="slider" value={difficulty} label={difficultyLabels[difficulty]} onChange={(value) => { if (value !== difficulty) telegram.selectionChanged(); setDifficulty(value); }} />
+          : <GameFooter variant="empty" />}
+    />
   );
 }

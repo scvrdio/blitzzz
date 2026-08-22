@@ -15,14 +15,14 @@ export const games: readonly GameDefinition[] = [
   {
     id: 'four-in-a-row',
     title: 'Четыре в ряд',
-    description: 'Собери четыре фишки\nв линию раньше соперника',
+    description: 'Собери четыре фишки в линию раньше соперника',
     href: '/games/four-in-a-row',
     startPrefix: 'game_',
   },
   {
     id: 'checkers',
     title: 'Шашки',
-    description: 'Забери все шашки соперника\nили заблокируй его ходы',
+    description: 'Забери все шашки соперника или заблокируй его ходы',
     href: '/games/checkers',
     startPrefix: 'checkers_',
   },
@@ -34,8 +34,8 @@ export const games: readonly GameDefinition[] = [
     startPrefix: 'tic_tac_toe',
   },
   { id: 'sea-battle', title: 'Морской бой', description: 'Найди и потопи корабли соперника' },
-  { id: 'quoridor', title: 'Коридор', description: 'Дойди до края поля первым,\nзадерживая противника стенами' },
-  { id: 'chapayev', title: 'Чапаева', description: 'Выбей фишки соперника\nи дойди первым до края поля' },
+  { id: 'quoridor', title: 'Коридор', description: 'Дойди до края поля первым, задерживая противника стенами' },
+  { id: 'chapayev', title: 'Чапаева', description: 'Выбей фишки соперника и дойди первым до края поля' },
 ] as const;
 
 export function gamePathFromStartParam(startParam?: string | null): string | null {

@@ -2,9 +2,8 @@
 
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { GameFooter } from '../../components/game/GameFooter';
 import { GameShell } from '../../components/game/GameShell';
-import { GameStatus } from '../../components/game/GameStatus';
-import { RestartButton } from '../../components/game/RestartButton';
 import { useNotice } from '../../hooks/use-notice';
 import { useTimeoutRegistry } from '../../hooks/use-timeout-registry';
 import { classNames } from '../../lib/class-names';
@@ -57,6 +56,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const previewRef = useRef<HTMLSpanElement>(null);
   const holeLayerRef = useRef<HTMLDivElement>(null);
   const bodyLayerRef = useRef<HTMLDivElement>(null);
+  const fallingRef = useRef<HTMLSpanElement | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const roomRef = useRef<ConnectFourRoom | null>(null);
   const boardRef = useRef(board);
@@ -71,8 +71,8 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     if (!room) return { name: 'Соперник Робот' };
     if (room.status === 'waiting') return { name: 'Ждём соперника' };
     return myChip === 'blue'
-      ? { name: room.black_name || 'Соперник', avatar: room.black_avatar || undefined }
-      : { name: room.blue_name || 'Соперник', avatar: room.blue_avatar || undefined };
+      ? { name: room.black_name || 'Игрок', avatar: room.black_avatar || undefined, multiplayer: true }
+      : { name: room.blue_name || 'Игрок', avatar: room.blue_avatar || undefined, multiplayer: true };
   }, [myChip, room]);
   const remotePreview = room?.status === 'active' && room.turn !== myChip && room.preview_player && room.preview_player !== userId && Number.isInteger(room.preview_column) ? room.preview_column : null;
   const previewColumn = remotePreview ?? selected;
@@ -122,6 +122,15 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     const observer = new ResizeObserver(rebuildFace);
     observer.observe(boardElement);
     return () => observer.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    const falling = fallingRef.current;
+    if (!falling) return;
+    fallingRef.current = null;
+    falling.remove();
+    setDropping(false);
+    telegram.impact('medium');
   }, [board]);
 
   useLayoutEffect(() => {
@@ -157,6 +166,8 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     const previewRect = previewRef.current?.getBoundingClientRect();
     const falling = document.createElement('span');
     falling.className = `connect-falling-chip connect-falling-chip--${chip}`;
+    fallingRef.current?.remove();
+    fallingRef.current = falling;
     const startTop = previewRect ? previewRect.top - sheetRect.top + 2 : -targetRect.height - 40;
     Object.assign(falling.style, { width: `${targetRect.width}px`, height: `${targetRect.height}px`, left: `${targetRect.left - sheetRect.left}px`, top: `${startTop}px` });
     sheet.append(falling);
@@ -170,9 +181,6 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     animationsRef.current.add(animation);
     await animation.finished.catch(() => undefined);
     animationsRef.current.delete(animation);
-    falling.remove();
-    setDropping(false);
-    telegram.impact('medium');
   };
 
   const finish = (nextWinner: Chip | 'draw', line: BoardPosition[] = []) => {
@@ -211,6 +219,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const processRemoteRoom = async (next: ConnectFourRoom, currentUserId: string) => {
     const change = boardChange(boardRef.current, next.board);
     const pending = pendingMoveRef.current;
+    if (change && pending && pending.row === change.row && pending.column === change.column && pending.chip === change.chip) return;
     if (change && (!pending || pending.row !== change.row || pending.column !== change.column || pending.chip !== change.chip)) {
       setLocked(true);
       await animateDrop(change.column, change.row, change.chip);
@@ -262,7 +271,8 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       void channelRef.current?.unsubscribe();
       animations.forEach((animation) => animation.cancel());
       animations.clear();
-      telegram.setVerticalSwipes(false);
+      fallingRef.current?.remove();
+      fallingRef.current = null;
     };
   }, [initialRoomId]);
 
@@ -401,10 +411,14 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   };
 
   return (
-    <GameShell title="Четыре в ряд" opponent={opponent} onInvite={invite} notice={notice.message}>
-      <section className="game-content connect-game">
-        <GameStatus muted={locked || winner === 'black'}>{status}</GameStatus>
-        <div className="connect-drop-zone" aria-hidden="true" />
+    <GameShell
+      title="Четыре в ряд"
+      opponent={opponent}
+      onInvite={invite}
+      notice={notice.message}
+      status={status}
+      statusMuted={locked || winner === 'black'}
+      game={
         <section className="connect-sheet" ref={sheetRef} aria-label="Игровое поле">
           <div className="connect-hole-layer" ref={holeLayerRef} aria-hidden="true" />
           {!dropping && !winner && firstOpenRow(board, previewColumn ?? 3) >= 0 && <span ref={previewRef} className={`connect-preview connect-preview--${previewChip}`} aria-hidden="true" />}
@@ -421,14 +435,9 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
               {Array.from({ length: connectFourColumns }, (_, column) => <button key={column} type="button" aria-label={`Положить фишку в столбец ${column + 1}`} disabled={locked || firstOpenRow(board, column) < 0} onClick={() => void play(column)} />)}
             </div>
           </div>
-          {!winner && <div className={classNames('connect-slider', myChip === 'black' && 'connect-slider--black', locked && 'is-disabled')}>
-            <span className="connect-slider__dots" aria-hidden="true">{Array.from({ length: 7 }, (_, column) => <i key={column} className={column === selected ? 'is-selected' : ''} />)}</span>
-            <span className="connect-slider__thumb" style={{ left: `calc(${selected * (100 / 7)}% + ${100 / 14}% - 12px)` }} aria-hidden="true" />
-            <input type="range" min="0" max="6" value={selected} aria-label="Выбор столбца" disabled={locked} onPointerDown={() => telegram.setVerticalSwipes(true)} onPointerUp={(event) => { telegram.setVerticalSwipes(false); void play(Number(event.currentTarget.value)); }} onPointerCancel={() => telegram.setVerticalSwipes(false)} onChange={(event) => { const column = Number(event.target.value); if (column !== selected) telegram.selectionChanged(); setSelected(column); publishPreview(column); }} />
-          </div>}
-          {winner && <RestartButton onClick={restart} />}
         </section>
-      </section>
-    </GameShell>
+      }
+      footer={winner ? <GameFooter variant="button" onPlayAgain={restart} /> : <GameFooter variant="empty" />}
+    />
   );
 }

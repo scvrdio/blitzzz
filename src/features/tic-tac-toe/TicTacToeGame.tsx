@@ -1,9 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
+import { GameFooter } from '../../components/game/GameFooter';
 import { GameShell } from '../../components/game/GameShell';
-import { GameStatus } from '../../components/game/GameStatus';
-import { RestartButton } from '../../components/game/RestartButton';
 import { useNotice } from '../../hooks/use-notice';
 import { useTimeoutRegistry } from '../../hooks/use-timeout-registry';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
@@ -87,18 +87,22 @@ export function TicTacToeGame() {
   };
 
   return (
-    <GameShell title="Крестики-нолики" onInvite={invite} notice={notice.message}>
-      <section className="game-content">
-        <GameStatus muted={robotThinking || result === 'o'}>{status}</GameStatus>
+    <GameShell
+      title="Крестики-нолики"
+      onInvite={invite}
+      notice={notice.message}
+      status={status}
+      statusMuted={robotThinking || result === 'o'}
+      game={
         <div className="tic-board" aria-label="Поле крестиков-ноликов">
           {cells.map((cell, index) => (
             <button key={index} type="button" className={`tic-cell${cell ? ` tic-cell--${cell}` : ''}`} aria-label={cell ? `Ячейка ${index + 1}: ${cell === 'x' ? 'крестик' : 'нолик'}` : `Ячейка ${index + 1}`} disabled={robotThinking || Boolean(result) || Boolean(cell)} onClick={() => move(index)}>
-              {cell && <span aria-hidden="true">{cell === 'x' ? '×' : ''}</span>}
+              {cell && <Image className={`tic-mark tic-mark--${cell}`} src={cell === 'x' ? '/icons/tic-cross.svg' : '/icons/tic-circle.svg'} width={cell === 'x' ? 53.6562 : 56} height={cell === 'x' ? 53.6562 : 56} alt="" aria-hidden="true" />}
             </button>
           ))}
         </div>
-        {result && <RestartButton onClick={restart} />}
-      </section>
-    </GameShell>
+      }
+      footer={result ? <GameFooter variant="button" onPlayAgain={restart} /> : <GameFooter variant="empty" />}
+    />
   );
 }

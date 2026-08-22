@@ -6,8 +6,8 @@ import { gamePathFromStartParam, games } from '../../config/games';
 import { telegram } from '../../lib/telegram/client';
 import { useNotice } from '../../hooks/use-notice';
 import { useTelegramProfile } from '../../hooks/use-telegram-profile';
-import { Avatar } from '../ui/Avatar';
 import { Notice } from '../ui/Notice';
+import { PlayerBadge } from '../ui/PlayerBadge';
 import { GameCard } from './GameCard';
 
 export function HomeScreen() {
@@ -30,7 +30,7 @@ export function HomeScreen() {
     <main className="home-screen">
       <header className="home-header">
         <h1 className="home-header__title">Blitzzz</h1>
-        {profile && <p className="player-badge"><Avatar name={profile.name} src={profile.photoUrl} /><span>{profile.name}</span></p>}
+        <PlayerBadge name={profile?.name || 'Игрок'} avatar={profile?.photoUrl} />
       </header>
       <section className="game-list" aria-label="Игры">
         {games.map((game) => <GameCard key={game.id} game={game} onUnavailable={showUnavailable} />)}
