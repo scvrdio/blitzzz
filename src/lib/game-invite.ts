@@ -13,5 +13,7 @@ export async function shareGameInvite({ title, text, startParam }: Invite) {
 }
 
 export function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback;
+  if (error instanceof Error && error.message) return error.message;
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message) return error.message;
+  return fallback;
 }

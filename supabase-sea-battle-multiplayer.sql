@@ -180,7 +180,8 @@ begin
 end;
 $$;
 
-create or replace function public.create_sea_battle_room(player_name text, player_avatar text default null)
+drop function if exists public.create_sea_battle_room(text, text);
+create function public.create_sea_battle_room(p_player_name text, p_player_avatar text default null)
 returns public.sea_battle_rooms
 language plpgsql
 security definer
@@ -190,13 +191,14 @@ declare result public.sea_battle_rooms;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   insert into public.sea_battle_rooms (host_player, host_name, host_avatar)
-  values (auth.uid(), nullif(trim(player_name), ''), nullif(trim(player_avatar), ''))
+  values (auth.uid(), nullif(trim(p_player_name), ''), nullif(trim(p_player_avatar), ''))
   returning * into result;
   return result;
 end;
 $$;
 
-create or replace function public.join_sea_battle_room(room_id uuid, player_name text, player_avatar text default null)
+drop function if exists public.join_sea_battle_room(uuid, text, text);
+create function public.join_sea_battle_room(p_room_id uuid, p_player_name text, p_player_avatar text default null)
 returns public.sea_battle_rooms
 language plpgsql
 security definer
@@ -205,22 +207,23 @@ as $$
 declare result public.sea_battle_rooms;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
-  select * into result from public.sea_battle_rooms where id = room_id for update;
+  select * into result from public.sea_battle_rooms where id = p_room_id for update;
   if not found then raise exception 'Room not found'; end if;
   if result.host_player <> auth.uid() and result.guest_player is not null and result.guest_player <> auth.uid() then
     raise exception 'Room is full';
   end if;
   if result.host_player <> auth.uid() and result.guest_player is null then
     update public.sea_battle_rooms
-      set guest_player = auth.uid(), guest_name = nullif(trim(player_name), ''),
-          guest_avatar = nullif(trim(player_avatar), ''), status = 'placing', updated_at = now()
-      where id = room_id returning * into result;
+      set guest_player = auth.uid(), guest_name = nullif(trim(p_player_name), ''),
+          guest_avatar = nullif(trim(p_player_avatar), ''), status = 'placing', updated_at = now()
+      where id = p_room_id returning * into result;
   end if;
   return result;
 end;
 $$;
 
-create or replace function public.set_sea_battle_fleet(room_id uuid, fleet jsonb)
+drop function if exists public.set_sea_battle_fleet(uuid, jsonb);
+create function public.set_sea_battle_fleet(p_room_id uuid, p_fleet jsonb)
 returns public.sea_battle_rooms
 language plpgsql
 security definer
@@ -230,16 +233,17 @@ declare result public.sea_battle_rooms;
 declare side text;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
-  if not public.sea_battle_valid_fleet(fleet) then raise exception 'Invalid fleet'; end if;
-  select * into result from public.sea_battle_rooms where id = room_id for update;
+  if not public.sea_battle_valid_fleet(p_fleet) then raise exception 'Invalid fleet'; end if;
+  select * into result from public.sea_battle_rooms where id = p_room_id for update;
   if not found then raise exception 'Room not found'; end if;
   if result.status in ('active', 'finished') then raise exception 'Game already started'; end if;
   side := case when result.host_player = auth.uid() then 'host' when result.guest_player = auth.uid() then 'guest' end;
   if side is null then raise exception 'Not a room player'; end if;
 
   insert into public.sea_battle_fleets (room_id, player_id, ships)
-  values (room_id, auth.uid(), fleet)
-  on conflict (room_id, player_id) do update set ships = excluded.ships, updated_at = now();
+  values (p_room_id, auth.uid(), p_fleet)
+  on conflict on constraint sea_battle_fleets_pkey
+  do update set ships = excluded.ships, updated_at = now();
 
   update public.sea_battle_rooms set
     host_ready = case when side = 'host' then true else host_ready end,
@@ -253,12 +257,13 @@ begin
     host_shots = public.sea_battle_empty_shots(), guest_shots = public.sea_battle_empty_shots(),
     host_sunk = '[]'::jsonb, guest_sunk = '[]'::jsonb,
     updated_at = now()
-  where id = room_id returning * into result;
+  where id = p_room_id returning * into result;
   return result;
 end;
 $$;
 
-create or replace function public.fire_sea_battle(room_id uuid, target integer)
+drop function if exists public.fire_sea_battle(uuid, integer);
+create function public.fire_sea_battle(p_room_id uuid, p_target integer)
 returns public.sea_battle_rooms
 language plpgsql
 security definer
@@ -278,8 +283,8 @@ declare
   won boolean := false;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
-  if target < 0 or target > 99 then raise exception 'Invalid target'; end if;
-  select * into result from public.sea_battle_rooms where id = room_id for update;
+  if p_target < 0 or p_target > 99 then raise exception 'Invalid target'; end if;
+  select * into result from public.sea_battle_rooms where id = p_room_id for update;
   if not found then raise exception 'Room not found'; end if;
   shooter := case when result.host_player = auth.uid() then 'host' when result.guest_player = auth.uid() then 'guest' end;
   if shooter is null then raise exception 'Not a room player'; end if;
@@ -289,19 +294,19 @@ begin
   opponent_id := case when opponent = 'host' then result.host_player else result.guest_player end;
   shots := case when shooter = 'host' then result.host_shots else result.guest_shots end;
   sunk_ships := case when opponent = 'host' then result.host_sunk else result.guest_sunk end;
-  if shots -> target <> 'null'::jsonb then raise exception 'Cell already fired at'; end if;
-  select ships into enemy_fleet from public.sea_battle_fleets where sea_battle_fleets.room_id = fire_sea_battle.room_id and player_id = opponent_id;
+  if shots -> p_target <> 'null'::jsonb then raise exception 'Cell already fired at'; end if;
+  select ships into enemy_fleet from public.sea_battle_fleets where sea_battle_fleets.room_id = p_room_id and player_id = opponent_id;
   if enemy_fleet is null then raise exception 'Opponent fleet is missing'; end if;
 
   select fleet_ships.value into hit_ship
   from jsonb_array_elements(enemy_fleet) as fleet_ships(value)
   where exists (
     select 1 from jsonb_array_elements(fleet_ships.value -> 'cells') as ship_cells(value)
-    where (ship_cells.value #>> '{}')::integer = target
+    where (ship_cells.value #>> '{}')::integer = p_target
   )
   limit 1;
   hit := hit_ship is not null;
-  shots := jsonb_set(shots, array[target::text], case when hit then '"hit"'::jsonb else '"miss"'::jsonb end, false);
+  shots := jsonb_set(shots, array[p_target::text], case when hit then '"hit"'::jsonb else '"miss"'::jsonb end, false);
 
   if hit then
     sunk := public.sea_battle_ship_sunk(hit_ship, shots);
@@ -326,12 +331,13 @@ begin
     winner = case when won then shooter else null end,
     status = case when won then 'finished' else status end,
     updated_at = now()
-  where id = room_id returning * into result;
+  where id = p_room_id returning * into result;
   return result;
 end;
 $$;
 
-create or replace function public.restart_sea_battle_room(room_id uuid)
+drop function if exists public.restart_sea_battle_room(uuid);
+create function public.restart_sea_battle_room(p_room_id uuid)
 returns public.sea_battle_rooms
 language plpgsql
 security definer
@@ -340,15 +346,15 @@ as $$
 declare result public.sea_battle_rooms;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
-  select * into result from public.sea_battle_rooms where id = room_id for update;
+  select * into result from public.sea_battle_rooms where id = p_room_id for update;
   if not found or (result.host_player <> auth.uid() and result.guest_player <> auth.uid()) then raise exception 'Not a room player'; end if;
-  delete from public.sea_battle_fleets where sea_battle_fleets.room_id = restart_sea_battle_room.room_id;
+  delete from public.sea_battle_fleets where sea_battle_fleets.room_id = p_room_id;
   update public.sea_battle_rooms set
     status = case when guest_player is null then 'waiting' else 'placing' end,
     host_ready = false, guest_ready = false, turn = 'host', winner = null,
     host_shots = public.sea_battle_empty_shots(), guest_shots = public.sea_battle_empty_shots(),
     host_sunk = '[]'::jsonb, guest_sunk = '[]'::jsonb, updated_at = now()
-  where id = room_id returning * into result;
+  where id = p_room_id returning * into result;
   return result;
 end;
 $$;

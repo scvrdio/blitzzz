@@ -196,9 +196,9 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
     const user = await ensureAnonymousUser();
     const profile = telegramProfile();
     const { data, error } = await supabase.rpc('join_sea_battle_room', {
-      room_id: id,
-      player_name: profile?.name ?? 'Игрок',
-      player_avatar: profile?.photoUrl ?? null,
+      p_room_id: id,
+      p_player_name: profile?.name ?? 'Игрок',
+      p_player_avatar: profile?.photoUrl ?? null,
     });
     if (error) throw error;
     if (!validSeaBattleRoom(data)) throw new Error('Сервер вернул некорректное состояние игры');
@@ -336,7 +336,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
     if (phase !== 'battle' || !isMyTurn || field !== 'opponent' || resolvingShot || playerShots[cell]) return;
     if (room && mySide) {
       setResolvingShot(true);
-      const { data, error } = await supabase.rpc('fire_sea_battle', { room_id: room.id, target: cell });
+      const { data, error } = await supabase.rpc('fire_sea_battle', { p_room_id: room.id, p_target: cell });
       if (error || !validSeaBattleRoom(data)) {
         setResolvingShot(false);
         notice.show(error ? errorMessage(error, 'Ход не прошёл') : 'Сервер вернул некорректное состояние игры');
@@ -368,8 +368,9 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
     if (!setupComplete) return;
     timers.clearAll();
     if (room && mySide) {
-      const { data, error } = await supabase.rpc('set_sea_battle_fleet', { room_id: room.id, fleet: playerShips });
+      const { data, error } = await supabase.rpc('set_sea_battle_fleet', { p_room_id: room.id, p_fleet: playerShips });
       if (error || !validSeaBattleRoom(data)) {
+        if (error) console.error('[sea-battle] Failed to save fleet', JSON.stringify(error));
         notice.show(error ? errorMessage(error, 'Не удалось сохранить расстановку') : 'Сервер вернул некорректное состояние игры');
         return;
       }
@@ -393,7 +394,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
     timers.clearAll();
     clearFieldTimer();
     if (room) {
-      const { data, error } = await supabase.rpc('restart_sea_battle_room', { room_id: room.id });
+      const { data, error } = await supabase.rpc('restart_sea_battle_room', { p_room_id: room.id });
       if (error || !validSeaBattleRoom(data)) return notice.show('Не удалось начать новую игру');
       setPlayerShips([]);
       syncRoom(data, userId!, true);
@@ -418,8 +419,8 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
         const user: User = await ensureAnonymousUser();
         const profile = telegramProfile();
         const { data, error } = await supabase.rpc('create_sea_battle_room', {
-          player_name: profile?.name ?? 'Игрок',
-          player_avatar: profile?.photoUrl ?? null,
+          p_player_name: profile?.name ?? 'Игрок',
+          p_player_avatar: profile?.photoUrl ?? null,
         });
         if (error) throw error;
         if (!validSeaBattleRoom(data)) throw new Error('Сервер вернул некорректную игровую сессию');
