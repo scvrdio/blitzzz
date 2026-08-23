@@ -10,13 +10,17 @@ import { useTimeoutRegistry } from '../../hooks/use-timeout-registry';
 import { classNames } from '../../lib/class-names';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { telegram } from '../../lib/telegram/client';
-import { BattleBoard } from './BattleBoard';
+import { BattleBoard, BattleBoardFrame, BattleGrid } from './BattleBoard';
 import { canPlaceShip, chooseRobotTarget, emptyShots, fireAt, fleetSizes, placementCells, randomFleet, remainingFleet, shipAt, survivingFleet, type FleetCounts, type Ship, type ShipSize, type ShotBoard } from './engine';
 
 type Phase = 'setup' | 'battle' | 'finished';
 type Winner = 'player' | 'robot' | null;
 
 const inventorySizes: readonly ShipSize[] = [1, 2, 3, 4];
+const fieldFlipDelay = 1000;
+const robotOpeningDelay = 1500;
+const robotFollowUpDelay = 1000;
+const robotTurnEndDelay = 1000;
 
 function footerShips(counts: FleetCounts): GameFooterShip[] {
   return inventorySizes.map((size) => ({ size, count: counts[size] }));
@@ -39,6 +43,34 @@ function FleetSetup({ ships }: { ships: readonly Ship[] }) {
         ))}
       </div>
     </div>
+  );
+}
+
+type BattleFieldsProps = {
+  field: GameFooterTab;
+  playerShips: readonly Ship[];
+  robotShips: readonly Ship[];
+  playerShots: ShotBoard;
+  robotShots: ShotBoard;
+  interactive: boolean;
+  onFire: (cell: number) => void;
+};
+
+function BattleFields({ field, playerShips, robotShips, playerShots, robotShots, interactive, onFire }: BattleFieldsProps) {
+  const showingOpponent = field === 'opponent';
+  return (
+    <BattleBoardFrame>
+      <div className="battle-board-scene">
+        <div className={classNames('battle-board-flipper', showingOpponent && 'is-showing-opponent')}>
+          <div className="battle-board-face battle-board-face--mine" aria-hidden={showingOpponent}>
+            <BattleGrid ships={playerShips} shots={robotShots} revealShips interactive={false} />
+          </div>
+          <div className="battle-board-face battle-board-face--opponent" aria-hidden={!showingOpponent}>
+            <BattleGrid ships={robotShips} shots={playerShots} revealShips={false} interactive={interactive && showingOpponent} onCellClick={onFire} />
+          </div>
+        </div>
+      </div>
+    </BattleBoardFrame>
   );
 }
 
@@ -150,7 +182,7 @@ export function SeaBattleGame() {
     telegram.notify(nextWinner === 'player' ? 'success' : 'error');
   };
 
-  const runRobotTurn = (currentShots: ShotBoard) => {
+  const runRobotTurn = (currentShots: ShotBoard, delay = robotOpeningDelay) => {
     timers.schedule(() => {
       const target = chooseRobotTarget(playerShips, currentShots);
       if (target === undefined) return;
@@ -160,14 +192,14 @@ export function SeaBattleGame() {
       telegram.impact(outcome.hit ? 'medium' : 'light');
       if (outcome.won) return finishGame('robot');
       if (outcome.hit) {
-        runRobotTurn(outcome.shots);
+        runRobotTurn(outcome.shots, robotFollowUpDelay);
       } else {
         timers.schedule(() => {
           setTurn('player');
           setField('opponent');
-        }, 420);
+        }, robotTurnEndDelay);
       }
-    }, 620);
+    }, delay);
   };
 
   const fire = (cell: number) => {
@@ -184,7 +216,7 @@ export function SeaBattleGame() {
       setField('mine');
       setResolvingShot(false);
       runRobotTurn(robotShots);
-    }, 520);
+    }, fieldFlipDelay);
   };
 
   const startGame = () => {
@@ -241,19 +273,28 @@ export function SeaBattleGame() {
       hero={phase === 'setup' ? <FleetSetup ships={playerShips} /> : undefined}
       gameInset={false}
       game={
-        <BattleBoard
-          ships={displayedShips}
-          shots={displayedShots}
-          revealShips={showingMine}
-          interactive={phase === 'setup' || (phase === 'battle' && turn === 'player' && field === 'opponent' && !resolvingShot)}
-          draftCells={phase === 'setup' ? draft : []}
-          draftValid={draftValid}
-          showRemoveHints={phase === 'setup'}
-          onCellClick={phase === 'battle' && field === 'opponent' ? fire : undefined}
-          onDragStart={phase === 'setup' ? beginPlacement : undefined}
-          onDragMove={phase === 'setup' ? updateDraft : undefined}
-          onDragEnd={phase === 'setup' ? finishPlacement : undefined}
-        />
+        phase === 'setup'
+          ? <BattleBoard
+              ships={playerShips}
+              shots={robotShots}
+              revealShips
+              interactive
+              draftCells={draft}
+              draftValid={draftValid}
+              showRemoveHints
+              onDragStart={beginPlacement}
+              onDragMove={updateDraft}
+              onDragEnd={finishPlacement}
+            />
+          : <BattleFields
+              field={field}
+              playerShips={playerShips}
+              robotShips={robotShips}
+              playerShots={playerShots}
+              robotShots={robotShots}
+              interactive={phase === 'battle' && turn === 'player' && !resolvingShot}
+              onFire={fire}
+            />
       }
       footer={phase === 'setup'
         ? <GameFooter variant="custom" className="battle-footer">

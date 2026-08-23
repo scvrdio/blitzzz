@@ -1,12 +1,12 @@
 'use client';
 
-import { useRef, type CSSProperties, type PointerEvent } from 'react';
+import { useRef, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
 import { classNames } from '../../lib/class-names';
 import { isShipSunk, seaBattleSize, shipAt, type Ship, type ShotBoard } from './engine';
 
 const columns = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К'];
 
-type BattleBoardProps = {
+export type BattleGridProps = {
   ships: readonly Ship[];
   shots: Readonly<ShotBoard>;
   revealShips: boolean;
@@ -48,7 +48,7 @@ function shipPosition(cells: readonly number[]): { style: CSSProperties; horizon
   };
 }
 
-export function BattleBoard({ ships, shots, revealShips, interactive = false, draftCells = [], draftValid = false, showRemoveHints = false, onCellClick, onDragStart, onDragMove, onDragEnd }: BattleBoardProps) {
+export function BattleGrid({ ships, shots, revealShips, interactive = false, draftCells = [], draftValid = false, showRemoveHints = false, onCellClick, onDragStart, onDragMove, onDragEnd }: BattleGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
 
   const cellFromPointer = (event: PointerEvent<HTMLDivElement>) => {
@@ -80,54 +80,64 @@ export function BattleBoard({ ships, shots, revealShips, interactive = false, dr
   };
 
   return (
+    <div
+      className="battle-board__grid"
+      ref={gridRef}
+      onPointerDown={startPointer}
+      onPointerMove={movePointer}
+      onPointerUp={endPointer}
+      onPointerCancel={endPointer}
+    >
+      {Array.from({ length: seaBattleSize * seaBattleSize }, (_, cell) => (
+        <button
+          key={cell}
+          type="button"
+          className="battle-board__cell"
+          aria-label={`${columns[cell % 10]}${Math.floor(cell / 10) + 1}`}
+          disabled={!interactive}
+          onClick={onCellClick ? () => onCellClick(cell) : undefined}
+        />
+      ))}
+
+      {ships.map((ship) => {
+        const sunk = isShipSunk(ship, shots);
+        if (!revealShips && !sunk) return null;
+        const position = shipPosition(ship.cells);
+        return <span key={ship.id} className={classNames('battle-board__ship', position.horizontal ? 'is-horizontal' : 'is-vertical', sunk && 'is-sunk')} style={position.style} aria-hidden="true" />;
+      })}
+
+      {draftCells.length ? (() => {
+        const position = shipPosition(draftCells);
+        return <span className={classNames('battle-board__ship', 'is-draft', position.horizontal ? 'is-horizontal' : 'is-vertical', !draftValid && 'is-invalid')} style={position.style} aria-hidden="true" />;
+      })() : null}
+
+      {shots.map((shot, cell) => {
+        if (!shot) return null;
+        if (shot === 'miss') return <span key={cell} className="battle-board__miss" style={cellPosition(cell)} aria-hidden="true" />;
+        const ship = shipAt(ships, cell);
+        const sunk = ship ? isShipSunk(ship, shots) : false;
+        return <span key={cell} className={classNames('battle-board__hit', sunk && 'is-sunk', revealShips && !sunk && 'is-on-ship')} style={cellPosition(cell)} aria-hidden="true" />;
+      })}
+
+      {showRemoveHints ? ships.map((ship) => (
+        <span key={`remove-${ship.id}`} className="battle-board__remove-hint" style={cellPosition(Math.max(...ship.cells))} aria-hidden="true" />
+      )) : null}
+    </div>
+  );
+}
+
+export function BattleBoardFrame({ children }: { children: ReactNode }) {
+  return (
     <section className="battle-board" aria-label="Поле морского боя">
       <div className="battle-board__columns battle-board__columns--top" aria-hidden="true">{columns.map((label) => <span key={label}>{label}</span>)}</div>
       <div className="battle-board__rows battle-board__rows--left" aria-hidden="true">{Array.from({ length: 10 }, (_, index) => <span key={index}>{index + 1}</span>)}</div>
-      <div
-        className="battle-board__grid"
-        ref={gridRef}
-        onPointerDown={startPointer}
-        onPointerMove={movePointer}
-        onPointerUp={endPointer}
-        onPointerCancel={endPointer}
-      >
-        {Array.from({ length: seaBattleSize * seaBattleSize }, (_, cell) => (
-          <button
-            key={cell}
-            type="button"
-            className="battle-board__cell"
-            aria-label={`${columns[cell % 10]}${Math.floor(cell / 10) + 1}`}
-            disabled={!interactive}
-            onClick={onCellClick ? () => onCellClick(cell) : undefined}
-          />
-        ))}
-
-        {ships.map((ship) => {
-          const sunk = isShipSunk(ship, shots);
-          if (!revealShips && !sunk) return null;
-          const position = shipPosition(ship.cells);
-          return <span key={ship.id} className={classNames('battle-board__ship', position.horizontal ? 'is-horizontal' : 'is-vertical', sunk && 'is-sunk')} style={position.style} aria-hidden="true" />;
-        })}
-
-        {draftCells.length ? (() => {
-          const position = shipPosition(draftCells);
-          return <span className={classNames('battle-board__ship', 'is-draft', position.horizontal ? 'is-horizontal' : 'is-vertical', !draftValid && 'is-invalid')} style={position.style} aria-hidden="true" />;
-        })() : null}
-
-        {shots.map((shot, cell) => {
-          if (!shot) return null;
-          if (shot === 'miss') return <span key={cell} className="battle-board__miss" style={cellPosition(cell)} aria-hidden="true" />;
-          const ship = shipAt(ships, cell);
-          const sunk = ship ? isShipSunk(ship, shots) : false;
-          return <span key={cell} className={classNames('battle-board__hit', sunk && 'is-sunk', revealShips && !sunk && 'is-on-ship')} style={cellPosition(cell)} aria-hidden="true" />;
-        })}
-
-        {showRemoveHints ? ships.map((ship) => (
-          <span key={`remove-${ship.id}`} className="battle-board__remove-hint" style={cellPosition(Math.max(...ship.cells))} aria-hidden="true" />
-        )) : null}
-      </div>
+      {children}
       <div className="battle-board__rows battle-board__rows--right" aria-hidden="true">{Array.from({ length: 10 }, (_, index) => <span key={index}>{index + 1}</span>)}</div>
       <div className="battle-board__columns battle-board__columns--bottom" aria-hidden="true">{columns.map((label) => <span key={label}>{label}</span>)}</div>
     </section>
   );
+}
+
+export function BattleBoard(props: BattleGridProps) {
+  return <BattleBoardFrame><BattleGrid {...props} /></BattleBoardFrame>;
 }
