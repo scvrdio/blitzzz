@@ -1,14 +1,14 @@
-export const gameIds = ['four-in-a-row', 'checkers', 'tic-tac-toe'] as const;
+export const gameIds = ['four-in-a-row', 'checkers', 'tic-tac-toe', 'sea-battle'] as const;
 
 export type GameId = (typeof gameIds)[number];
-export type GamePreviewKind = GameId | 'sea-battle' | 'quoridor' | 'chapayev';
+export type GamePreviewKind = GameId | 'quoridor' | 'chapayev';
 
 export type GameDefinition = {
   id: GamePreviewKind;
   title: string;
   description: string;
   href?: `/games/${GameId}`;
-  startPrefix?: 'game_' | 'checkers_' | 'tic_tac_toe';
+  startPrefix?: 'game_' | 'checkers_' | 'tic_tac_toe' | 'sea_battle';
 };
 
 export const games: readonly GameDefinition[] = [
@@ -33,7 +33,13 @@ export const games: readonly GameDefinition[] = [
     href: '/games/tic-tac-toe',
     startPrefix: 'tic_tac_toe',
   },
-  { id: 'sea-battle', title: 'Морской бой', description: 'Найди и потопи корабли соперника' },
+  {
+    id: 'sea-battle',
+    title: 'Морской бой',
+    description: 'Найди и потопи корабли соперника',
+    href: '/games/sea-battle',
+    startPrefix: 'sea_battle',
+  },
   { id: 'quoridor', title: 'Коридор', description: 'Дойди до края поля первым, задерживая противника стенами' },
   { id: 'chapayev', title: 'Чапаева', description: 'Выбей фишки соперника и дойди первым до края поля' },
 ] as const;

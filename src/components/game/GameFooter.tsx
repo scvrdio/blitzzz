@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import type { ReactNode } from 'react';
 import { classNames } from '../../lib/class-names';
 import { Button } from '../ui/Button';
 
@@ -35,7 +36,20 @@ type SliderFooterProps = SharedFooterProps & {
   label?: string;
 };
 
-export type GameFooterProps = EmptyFooterProps | ButtonFooterProps | TabbarFooterProps | SliderFooterProps;
+type CustomFooterProps = SharedFooterProps & {
+  variant: 'custom';
+  children: ReactNode;
+};
+
+export type GameFooterShip = { size: 1 | 2 | 3 | 4; count: number };
+
+type ShipsFooterProps = SharedFooterProps & {
+  variant: 'ships';
+  label: string;
+  ships: readonly GameFooterShip[];
+};
+
+export type GameFooterProps = EmptyFooterProps | ButtonFooterProps | TabbarFooterProps | SliderFooterProps | ShipsFooterProps | CustomFooterProps;
 
 const sliderValues: GameFooterSliderValue[] = [0, 1, 2, 3, 4];
 
@@ -76,6 +90,26 @@ export function GameFooter(props: GameFooterProps) {
             );
           })}
         </div>
+      </footer>
+    );
+  }
+
+  if (props.variant === 'custom') {
+    return <footer className={classNames('game-footer', 'game-footer--custom', props.className)} data-node-id="78:2557">{props.children}</footer>;
+  }
+
+  if (props.variant === 'ships') {
+    return (
+      <footer className={classNames('game-footer', 'game-footer--ships', props.className)} data-node-id="91:8995">
+        <span className="game-footer__ships-label">{props.label}</span>
+        <span className="game-footer__ships-list" aria-label={props.label}>
+          {props.ships.map(({ size, count }) => (
+            <span key={size} className={classNames('game-footer__ship', count === 0 && 'is-empty')}>
+              <strong>{count} ×</strong>
+              <i style={{ width: `${size * 16}px` }} aria-hidden="true" />
+            </span>
+          ))}
+        </span>
       </footer>
     );
   }
