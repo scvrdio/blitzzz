@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GameFooter, type GameFooterShip, type GameFooterTab } from '../../components/game/GameFooter';
 import { GameShell } from '../../components/game/GameShell';
 import { Button } from '../../components/ui/Button';
@@ -60,6 +60,39 @@ export function SeaBattleGame() {
   const notice = useNotice();
   const timers = useTimeoutRegistry();
   const setupComplete = playerShips.length === fleetSizes.length;
+
+  useEffect(() => {
+    if (phase !== 'setup') return;
+    const elements = [document.documentElement, document.body];
+    const previousStyles = elements.map((element) => ({
+      element,
+      overflowX: element.style.overflowX,
+      overflowY: element.style.overflowY,
+      overscrollBehavior: element.style.overscrollBehavior,
+      touchAction: element.style.touchAction,
+    }));
+    const preventTouchMove = (event: TouchEvent) => event.preventDefault();
+
+    elements.forEach((element) => {
+      element.style.overflowX = 'hidden';
+      element.style.overflowY = 'hidden';
+      element.style.overscrollBehavior = 'none';
+      element.style.touchAction = 'none';
+    });
+    document.addEventListener('touchmove', preventTouchMove, { passive: false });
+    telegram.setVerticalSwipes(true);
+
+    return () => {
+      document.removeEventListener('touchmove', preventTouchMove);
+      previousStyles.forEach(({ element, overflowX, overflowY, overscrollBehavior, touchAction }) => {
+        element.style.overflowX = overflowX;
+        element.style.overflowY = overflowY;
+        element.style.overscrollBehavior = overscrollBehavior;
+        element.style.touchAction = touchAction;
+      });
+      telegram.setVerticalSwipes(false);
+    };
+  }, [phase]);
 
   const updateDraft = (current: number) => {
     const start = dragStartRef.current;
