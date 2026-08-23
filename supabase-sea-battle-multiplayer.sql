@@ -104,8 +104,8 @@ begin
       foreach other in array occupied loop
         if abs(cell / 10 - other / 10) <= 1 and abs(cell % 10 - other % 10) <= 1 then return false; end if;
       end loop;
-      occupied := array_append(occupied, cell);
     end loop;
+    occupied := occupied || cells;
 
     if ship_size = 1 then size_1 := size_1 + 1;
     elsif ship_size = 2 then size_2 := size_2 + 1;

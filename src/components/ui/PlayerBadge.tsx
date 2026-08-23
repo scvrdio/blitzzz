@@ -8,7 +8,7 @@ type PlayerBadgeProps = {
 
 export function PlayerBadge({ name, avatar, label }: PlayerBadgeProps) {
   return (
-    <div className="player-badge">
+    <div className={label ? 'player-badge player-badge--labeled' : 'player-badge'}>
       {label && <span>{label}</span>}
       {avatar && <Avatar name={name} src={avatar} size={20} />}
       <span>{name}</span>

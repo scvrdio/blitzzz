@@ -488,7 +488,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
                 <Image src="/icons/battleship-shuffle.svg" width={20} height={20} alt="" unoptimized />
                 {!setupComplete ? <span>Случайная расстановка</span> : null}
               </Button>
-              {setupComplete ? <Button className="battle-footer__start" onClick={() => void startGame()}>Начать игру</Button> : null}
+              {setupComplete ? <Button className="battle-footer__start" onClick={() => void startGame()}>Готово</Button> : null}
             </GameFooter>
         : phase === 'finished'
           ? <GameFooter variant="button" onPlayAgain={() => void restart()} />
