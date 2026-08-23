@@ -8,7 +8,7 @@ export type GameDefinition = {
   title: string;
   description: string;
   href?: `/games/${GameId}`;
-  startPrefix?: 'game_' | 'checkers_' | 'tic_tac_toe' | 'sea_battle';
+  startPrefix?: 'game_' | 'checkers_' | 'tic_tac_toe' | 'sea_battle_';
 };
 
 export const games: readonly GameDefinition[] = [
@@ -38,7 +38,7 @@ export const games: readonly GameDefinition[] = [
     title: 'Морской бой',
     description: 'Найди и потопи корабли соперника',
     href: '/games/sea-battle',
-    startPrefix: 'sea_battle',
+    startPrefix: 'sea_battle_',
   },
   { id: 'quoridor', title: 'Коридор', description: 'Дойди до края поля первым, задерживая противника стенами' },
   { id: 'chapayev', title: 'Чапаева', description: 'Выбей фишки соперника и дойди первым до края поля' },

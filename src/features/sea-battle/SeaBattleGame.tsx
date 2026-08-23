@@ -1,7 +1,8 @@
 'use client';
 
+import type { RealtimeChannel, User } from '@supabase/supabase-js';
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { GameFooter, type GameFooterShip, type GameFooterTab } from '../../components/game/GameFooter';
 import { GameShell } from '../../components/game/GameShell';
 import { Button } from '../../components/ui/Button';
@@ -9,9 +10,11 @@ import { useNotice } from '../../hooks/use-notice';
 import { useTimeoutRegistry } from '../../hooks/use-timeout-registry';
 import { classNames } from '../../lib/class-names';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
-import { telegram } from '../../lib/telegram/client';
+import { ensureAnonymousUser, supabase } from '../../lib/supabase/client';
+import { telegram, telegramProfile } from '../../lib/telegram/client';
 import { BattleBoard, BattleBoardFrame, BattleGrid } from './BattleBoard';
-import { canPlaceShip, chooseRobotTarget, emptyShots, fireAt, fleetSizes, placementCells, randomFleet, remainingFleet, shipAt, survivingFleet, type FleetCounts, type Ship, type ShipSize, type ShotBoard } from './engine';
+import { canPlaceShip, chooseRobotTarget, emptyShots, fireAt, fleetCounts, fleetSizes, placementCells, randomFleet, remainingFleet, shipAt, survivingFleet, type FleetCounts, type Ship, type ShipSize, type ShotBoard } from './engine';
+import { opponentSide, readyFor, shotsFor, sideForUser, sunkFor, validFleet, validSeaBattleRoom, type SeaBattleRoom } from './multiplayer';
 
 type Phase = 'setup' | 'battle' | 'finished';
 type Winner = 'player' | 'robot' | null;
@@ -26,13 +29,19 @@ function footerShips(counts: FleetCounts): GameFooterShip[] {
   return inventorySizes.map((size) => ({ size, count: counts[size] }));
 }
 
-function FleetSetup({ ships }: { ships: readonly Ship[] }) {
+function fleetAfterSunk(ships: readonly Ship[]): FleetCounts {
+  const remaining = { ...fleetCounts };
+  ships.forEach((ship) => { remaining[ship.size] = Math.max(0, remaining[ship.size] - 1); });
+  return remaining;
+}
+
+function FleetSetup({ ships, waiting }: { ships: readonly Ship[]; waiting?: string }) {
   const remaining = remainingFleet(ships);
   return (
     <div className="battle-setup">
       <div className="battle-setup__copy">
-        <strong>Расставь корабли</strong>
-        <span>Выдели клетки на поле,<br />чтобы поставить корабль</span>
+        <strong>{waiting ? 'Флот готов' : 'Расставь корабли'}</strong>
+        <span>{waiting ?? <>Выдели клетки на поле,<br />чтобы поставить корабль</>}</span>
       </div>
       <div className="battle-inventory" aria-label="Оставшиеся корабли">
         {inventorySizes.map((size) => (
@@ -49,24 +58,24 @@ function FleetSetup({ ships }: { ships: readonly Ship[] }) {
 type BattleFieldsProps = {
   field: GameFooterTab;
   playerShips: readonly Ship[];
-  robotShips: readonly Ship[];
+  opponentShips: readonly Ship[];
   playerShots: ShotBoard;
-  robotShots: ShotBoard;
+  opponentShots: ShotBoard;
   interactive: boolean;
   onFire: (cell: number) => void;
 };
 
-function BattleFields({ field, playerShips, robotShips, playerShots, robotShots, interactive, onFire }: BattleFieldsProps) {
+function BattleFields({ field, playerShips, opponentShips, playerShots, opponentShots, interactive, onFire }: BattleFieldsProps) {
   const showingOpponent = field === 'opponent';
   return (
     <BattleBoardFrame>
       <div className="battle-board-scene">
         <div className={classNames('battle-board-flipper', showingOpponent && 'is-showing-opponent')}>
           <div className="battle-board-face battle-board-face--mine" aria-hidden={showingOpponent}>
-            <BattleGrid ships={playerShips} shots={robotShots} revealShips interactive={false} />
+            <BattleGrid ships={playerShips} shots={opponentShots} revealShips interactive={false} />
           </div>
           <div className="battle-board-face battle-board-face--opponent" aria-hidden={!showingOpponent}>
-            <BattleGrid ships={robotShips} shots={playerShots} revealShips={false} interactive={interactive && showingOpponent} onCellClick={onFire} />
+            <BattleGrid ships={opponentShips} shots={playerShots} revealShips={false} interactive={interactive && showingOpponent} onCellClick={onFire} />
           </div>
         </div>
       </div>
@@ -74,27 +83,149 @@ function BattleFields({ field, playerShips, robotShips, playerShots, robotShots,
   );
 }
 
-export function SeaBattleGame() {
+export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
   const [phase, setPhase] = useState<Phase>('setup');
   const [playerShips, setPlayerShips] = useState<Ship[]>([]);
-  const [robotShips, setRobotShips] = useState<Ship[]>([]);
+  const [opponentShips, setOpponentShips] = useState<Ship[]>([]);
   const [playerShots, setPlayerShots] = useState<ShotBoard>(emptyShots);
-  const [robotShots, setRobotShots] = useState<ShotBoard>(emptyShots);
-  const [turn, setTurn] = useState<'player' | 'robot'>('player');
+  const [opponentShots, setOpponentShots] = useState<ShotBoard>(emptyShots);
+  const [localTurn, setLocalTurn] = useState<'player' | 'robot'>('player');
   const [field, setField] = useState<GameFooterTab>('opponent');
   const [winner, setWinner] = useState<Winner>(null);
   const [resolvingShot, setResolvingShot] = useState(false);
   const [draft, setDraft] = useState<number[]>([]);
   const [draftValid, setDraftValid] = useState(false);
+  const [room, setRoom] = useState<SeaBattleRoom | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const dragStartRef = useRef<number | null>(null);
   const draftRef = useRef<number[]>([]);
   const nextShipIdRef = useRef(1);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const roomRef = useRef<SeaBattleRoom | null>(null);
+  const mountedRef = useRef(true);
+  const fieldTimerRef = useRef<number | null>(null);
   const notice = useNotice();
   const timers = useTimeoutRegistry();
   const setupComplete = playerShips.length === fleetSizes.length;
+  const mySide = room ? sideForUser(room, userId) : null;
+  const myReady = Boolean(room && mySide && readyFor(room, mySide));
+  const isMyTurn = room && mySide ? room.turn === mySide : localTurn === 'player';
+
+  const opponent = useMemo(() => {
+    if (!room || !mySide) return { name: 'Соперник Робот' };
+    const isHost = mySide === 'host';
+    const opponentId = isHost ? room.guest_player : room.host_player;
+    if (!opponentId) return { name: 'Ждём соперника' };
+    return {
+      name: (isHost ? room.guest_name : room.host_name) || 'Игрок',
+      avatar: (isHost ? room.guest_avatar : room.host_avatar) || undefined,
+      multiplayer: true,
+    };
+  }, [mySide, room]);
+
+  const clearFieldTimer = () => {
+    if (fieldTimerRef.current !== null) window.clearTimeout(fieldTimerRef.current);
+    fieldTimerRef.current = null;
+  };
+
+  const showFieldAfterDelay = (nextField: GameFooterTab) => {
+    clearFieldTimer();
+    setResolvingShot(true);
+    fieldTimerRef.current = window.setTimeout(() => {
+      if (!mountedRef.current) return;
+      setField(nextField);
+      setResolvingShot(false);
+      fieldTimerRef.current = null;
+    }, fieldFlipDelay);
+  };
+
+  const syncRoom = (next: SeaBattleRoom, currentUserId: string, initial = false) => {
+    if (!mountedRef.current) return;
+    const previous = roomRef.current;
+    if (previous?.updated_at && next.updated_at && Date.parse(next.updated_at) < Date.parse(previous.updated_at)) return;
+    const side = sideForUser(next, currentUserId);
+    if (!side) return;
+    const enemySide = opponentSide(side);
+    const nextPhase: Phase = next.status === 'active' ? 'battle' : next.status === 'finished' ? 'finished' : 'setup';
+
+    roomRef.current = next;
+    setRoom(next);
+    setPlayerShots([...shotsFor(next, side)]);
+    setOpponentShots([...shotsFor(next, enemySide)]);
+    setOpponentShips(sunkFor(next, enemySide).map((ship) => ({ ...ship, cells: [...ship.cells] })));
+    setPhase(nextPhase);
+    setWinner(next.winner ? (next.winner === side ? 'player' : 'robot') : null);
+
+    if (previous && (previous.status === 'active' || previous.status === 'finished') && (next.status === 'placing' || next.status === 'waiting')) {
+      setPlayerShips([]);
+      setDraft([]);
+      draftRef.current = [];
+    }
+
+    if (initial || previous?.status !== 'active' && next.status === 'active') {
+      clearFieldTimer();
+      setField(next.turn === side ? 'opponent' : 'mine');
+      setResolvingShot(false);
+    } else if (next.status === 'active' && previous?.turn !== next.turn) {
+      showFieldAfterDelay(next.turn === side ? 'opponent' : 'mine');
+    } else if (next.status === 'finished') {
+      clearFieldTimer();
+      setField(next.winner === side ? 'opponent' : 'mine');
+      setResolvingShot(false);
+      if (previous?.status !== 'finished') telegram.notify(next.winner === side ? 'success' : 'error');
+    }
+  };
+
+  const subscribe = (id: string, currentUserId: string) => {
+    void channelRef.current?.unsubscribe();
+    channelRef.current = supabase
+      .channel(`sea-battle-${id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sea_battle_rooms', filter: `id=eq.${id}` }, ({ new: next }) => {
+        if (validSeaBattleRoom(next)) syncRoom(next, currentUserId);
+      })
+      .subscribe();
+  };
+
+  const loadOwnFleet = async (id: string, currentUserId: string) => {
+    const { data, error } = await supabase.from('sea_battle_fleets').select('ships').eq('room_id', id).eq('player_id', currentUserId).maybeSingle();
+    if (error) throw error;
+    if (data && validFleet(data.ships)) setPlayerShips(data.ships.map((ship) => ({ ...ship, cells: [...ship.cells] })));
+  };
+
+  const connectRoom = async (id: string) => {
+    const user = await ensureAnonymousUser();
+    const profile = telegramProfile();
+    const { data, error } = await supabase.rpc('join_sea_battle_room', {
+      room_id: id,
+      player_name: profile?.name ?? 'Игрок',
+      player_avatar: profile?.photoUrl ?? null,
+    });
+    if (error) throw error;
+    if (!validSeaBattleRoom(data)) throw new Error('Сервер вернул некорректное состояние игры');
+    setUserId(user.id);
+    await loadOwnFleet(id, user.id);
+    subscribe(id, user.id);
+    syncRoom(data, user.id, true);
+    return { user, room: data };
+  };
+
+  const connectToInitialRoom = useEffectEvent((id: string) => {
+    void connectRoom(id).catch((error) => notice.show(errorMessage(error, 'Не удалось открыть сетевую игру')));
+  });
 
   useEffect(() => {
-    if (phase !== 'setup') return;
+    mountedRef.current = true;
+    const connectTimer = initialRoomId ? window.setTimeout(() => connectToInitialRoom(initialRoomId), 0) : null;
+    return () => {
+      mountedRef.current = false;
+      if (connectTimer !== null) window.clearTimeout(connectTimer);
+      clearFieldTimer();
+      void channelRef.current?.unsubscribe();
+    };
+  }, [initialRoomId]);
+
+  useEffect(() => {
+    if (phase !== 'setup' || myReady) return;
     const elements = [document.documentElement, document.body];
     const previousStyles = elements.map((element) => ({
       element,
@@ -124,11 +255,11 @@ export function SeaBattleGame() {
       });
       telegram.setVerticalSwipes(false);
     };
-  }, [phase]);
+  }, [myReady, phase]);
 
   const updateDraft = (current: number) => {
     const start = dragStartRef.current;
-    if (start === null) return;
+    if (start === null || myReady) return;
     const next = placementCells(start, current, playerShips);
     if (next.length !== draftRef.current.length) telegram.selectionChanged();
     draftRef.current = next;
@@ -137,6 +268,7 @@ export function SeaBattleGame() {
   };
 
   const beginPlacement = (cell: number) => {
+    if (myReady) return;
     const existing = shipAt(playerShips, cell);
     if (existing) {
       setPlayerShips((current) => current.filter((ship) => ship.id !== existing.id));
@@ -148,7 +280,7 @@ export function SeaBattleGame() {
   };
 
   const finishPlacement = () => {
-    if (dragStartRef.current === null) return;
+    if (dragStartRef.current === null || myReady) return;
     const cells = draftRef.current;
     const valid = canPlaceShip(playerShips, cells);
     if (valid && cells.length) {
@@ -166,6 +298,7 @@ export function SeaBattleGame() {
   };
 
   const arrangeRandomly = () => {
+    if (myReady) return;
     setPlayerShips(randomFleet());
     dragStartRef.current = null;
     draftRef.current = [];
@@ -174,7 +307,7 @@ export function SeaBattleGame() {
     telegram.impact('medium');
   };
 
-  const finishGame = (nextWinner: Exclude<Winner, null>) => {
+  const finishLocalGame = (nextWinner: Exclude<Winner, null>) => {
     setResolvingShot(false);
     setWinner(nextWinner);
     setPhase('finished');
@@ -188,124 +321,177 @@ export function SeaBattleGame() {
       if (target === undefined) return;
       const outcome = fireAt(playerShips, currentShots, target);
       if (!outcome) return;
-      setRobotShots(outcome.shots);
+      setOpponentShots(outcome.shots);
       telegram.impact(outcome.hit ? 'medium' : 'light');
-      if (outcome.won) return finishGame('robot');
+      if (outcome.won) return finishLocalGame('robot');
       if (outcome.hit) {
         runRobotTurn(outcome.shots, robotFollowUpDelay);
       } else {
-        timers.schedule(() => {
-          setTurn('player');
-          setField('opponent');
-        }, robotTurnEndDelay);
+        timers.schedule(() => { setLocalTurn('player'); setField('opponent'); }, robotTurnEndDelay);
       }
     }, delay);
   };
 
-  const fire = (cell: number) => {
-    if (phase !== 'battle' || turn !== 'player' || field !== 'opponent' || resolvingShot || playerShots[cell]) return;
-    const outcome = fireAt(robotShips, playerShots, cell);
+  const fire = async (cell: number) => {
+    if (phase !== 'battle' || !isMyTurn || field !== 'opponent' || resolvingShot || playerShots[cell]) return;
+    if (room && mySide) {
+      setResolvingShot(true);
+      const { data, error } = await supabase.rpc('fire_sea_battle', { room_id: room.id, target: cell });
+      if (error || !validSeaBattleRoom(data)) {
+        setResolvingShot(false);
+        notice.show(error ? errorMessage(error, 'Ход не прошёл') : 'Сервер вернул некорректное состояние игры');
+        return;
+      }
+      const hit = shotsFor(data, mySide)[cell] === 'hit';
+      telegram.impact(hit ? 'medium' : 'light');
+      syncRoom(data, userId!, false);
+      if (data.status === 'active' && data.turn === mySide) timers.schedule(() => setResolvingShot(false), 280);
+      return;
+    }
+
+    const outcome = fireAt(opponentShips, playerShots, cell);
     if (!outcome) return;
     setResolvingShot(true);
     setPlayerShots(outcome.shots);
     telegram.impact(outcome.hit ? 'medium' : 'light');
-    if (outcome.won) return finishGame('player');
+    if (outcome.won) return finishLocalGame('player');
     if (outcome.hit) return timers.schedule(() => setResolvingShot(false), 280);
     timers.schedule(() => {
-      setTurn('robot');
+      setLocalTurn('robot');
       setField('mine');
       setResolvingShot(false);
-      runRobotTurn(robotShots);
+      runRobotTurn(opponentShots);
     }, fieldFlipDelay);
   };
 
-  const startGame = () => {
+  const startGame = async () => {
     if (!setupComplete) return;
     timers.clearAll();
-    setRobotShips(randomFleet());
+    if (room && mySide) {
+      const { data, error } = await supabase.rpc('set_sea_battle_fleet', { room_id: room.id, fleet: playerShips });
+      if (error || !validSeaBattleRoom(data)) {
+        notice.show(error ? errorMessage(error, 'Не удалось сохранить расстановку') : 'Сервер вернул некорректное состояние игры');
+        return;
+      }
+      telegram.impact('medium');
+      syncRoom(data, userId!, data.status === 'active');
+      return;
+    }
+    setOpponentShips(randomFleet());
     setPlayerShots(emptyShots());
-    setRobotShots(emptyShots());
+    setOpponentShots(emptyShots());
     setWinner(null);
     setResolvingShot(false);
     setPhase('battle');
-    setTurn('player');
+    setLocalTurn('player');
     setField('opponent');
     telegram.impact('medium');
   };
 
-  const restart = () => {
+  const restart = async () => {
+    telegram.impact('light');
     timers.clearAll();
+    clearFieldTimer();
+    if (room) {
+      const { data, error } = await supabase.rpc('restart_sea_battle_room', { room_id: room.id });
+      if (error || !validSeaBattleRoom(data)) return notice.show('Не удалось начать новую игру');
+      setPlayerShips([]);
+      syncRoom(data, userId!, true);
+      return;
+    }
     setPhase('setup');
     setPlayerShips([]);
-    setRobotShips([]);
+    setOpponentShips([]);
     setPlayerShots(emptyShots());
-    setRobotShots(emptyShots());
+    setOpponentShots(emptyShots());
     setWinner(null);
     setResolvingShot(false);
-    setTurn('player');
+    setLocalTurn('player');
     setField('opponent');
-    telegram.impact('light');
   };
 
   const invite = async () => {
     telegram.impact('light');
     try {
-      const outcome = await shareGameInvite({ title: 'Морской бой', text: 'Сыграем в Морской бой?', startParam: 'sea_battle' });
+      let activeRoom = room;
+      if (!activeRoom) {
+        const user: User = await ensureAnonymousUser();
+        const profile = telegramProfile();
+        const { data, error } = await supabase.rpc('create_sea_battle_room', {
+          player_name: profile?.name ?? 'Игрок',
+          player_avatar: profile?.photoUrl ?? null,
+        });
+        if (error) throw error;
+        if (!validSeaBattleRoom(data)) throw new Error('Сервер вернул некорректную игровую сессию');
+        activeRoom = data;
+        setUserId(user.id);
+        timers.clearAll();
+        setPhase('setup');
+        setOpponentShips([]);
+        setPlayerShots(emptyShots());
+        setOpponentShots(emptyShots());
+        setWinner(null);
+        window.history.replaceState(null, '', `/games/sea-battle?room=${encodeURIComponent(data.id)}`);
+        subscribe(data.id, user.id);
+        syncRoom(data, user.id, true);
+      }
+      const outcome = await shareGameInvite({ title: 'Морской бой', text: 'Сыграем в Морской бой?', startParam: `sea_battle_${activeRoom.id}` });
       if (outcome === 'copied') notice.show('Ссылка-приглашение скопирована');
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) notice.show(errorMessage(error, 'Не удалось поделиться игрой'));
+      if (!(error instanceof DOMException && error.name === 'AbortError')) notice.show(errorMessage(error, 'Не удалось создать приглашение'));
     }
   };
 
-  const status = winner === 'player' ? 'Победа' : winner === 'robot' ? 'Поражение' : turn === 'player' ? 'Твой ход' : 'Ход соперника';
+  const status = winner === 'player' ? 'Победа' : winner === 'robot' ? 'Поражение' : isMyTurn ? 'Твой ход' : 'Ход соперника';
   const showingMine = phase === 'setup' || field === 'mine';
-  const displayedShips = showingMine ? playerShips : robotShips;
-  const displayedShots = showingMine ? robotShots : playerShots;
-  const battleFleet = survivingFleet(displayedShips, displayedShots);
+  const displayedShots = showingMine ? opponentShots : playerShots;
+  const battleFleet = showingMine ? survivingFleet(playerShips, displayedShots) : room ? fleetAfterSunk(opponentShips) : survivingFleet(opponentShips, displayedShots);
+  const waitingCopy = myReady ? (room?.guest_player ? 'Соперник расставляет корабли' : 'Ждём соперника') : undefined;
 
   return (
     <GameShell
       title="Морской бой"
+      opponent={opponent}
       onInvite={invite}
       notice={notice.message}
       status={status}
-      statusMuted={turn === 'robot' || winner === 'robot'}
-      hero={phase === 'setup' ? <FleetSetup ships={playerShips} /> : undefined}
+      statusMuted={!isMyTurn || winner === 'robot'}
+      hero={phase === 'setup' ? <FleetSetup ships={playerShips} waiting={waitingCopy} /> : undefined}
       gameInset={false}
-      game={
-        phase === 'setup'
-          ? <BattleBoard
-              ships={playerShips}
-              shots={robotShots}
-              revealShips
-              interactive
-              draftCells={draft}
-              draftValid={draftValid}
-              showRemoveHints
-              onDragStart={beginPlacement}
-              onDragMove={updateDraft}
-              onDragEnd={finishPlacement}
-            />
-          : <BattleFields
-              field={field}
-              playerShips={playerShips}
-              robotShips={robotShips}
-              playerShots={playerShots}
-              robotShots={robotShots}
-              interactive={phase === 'battle' && turn === 'player' && !resolvingShot}
-              onFire={fire}
-            />
-      }
+      game={phase === 'setup'
+        ? <BattleBoard
+            ships={playerShips}
+            shots={opponentShots}
+            revealShips
+            interactive={!myReady}
+            draftCells={draft}
+            draftValid={draftValid}
+            showRemoveHints={!myReady}
+            onDragStart={beginPlacement}
+            onDragMove={updateDraft}
+            onDragEnd={finishPlacement}
+          />
+        : <BattleFields
+            field={field}
+            playerShips={playerShips}
+            opponentShips={opponentShips}
+            playerShots={playerShots}
+            opponentShots={opponentShots}
+            interactive={phase === 'battle' && isMyTurn && !resolvingShot}
+            onFire={(cell) => void fire(cell)}
+          />}
       footer={phase === 'setup'
-        ? <GameFooter variant="custom" className="battle-footer">
-            <Button className={classNames('battle-footer__random', setupComplete && 'battle-footer__random--icon')} variant={setupComplete ? 'surface' : 'primary'} size={setupComplete ? 'icon' : 'medium'} onClick={arrangeRandomly} aria-label={setupComplete ? 'Случайная расстановка' : undefined}>
-              <Image src="/icons/battleship-shuffle.svg" width={20} height={20} alt="" unoptimized />
-              {!setupComplete ? <span>Случайная расстановка</span> : null}
-            </Button>
-            {setupComplete ? <Button className="battle-footer__start" onClick={startGame}>Начать игру</Button> : null}
-          </GameFooter>
+        ? myReady
+          ? <GameFooter variant="empty" />
+          : <GameFooter variant="custom" className="battle-footer">
+              <Button className={classNames('battle-footer__random', setupComplete && 'battle-footer__random--icon')} variant={setupComplete ? 'surface' : 'primary'} size={setupComplete ? 'icon' : 'medium'} onClick={arrangeRandomly} aria-label={setupComplete ? 'Случайная расстановка' : undefined}>
+                <Image src="/icons/battleship-shuffle.svg" width={20} height={20} alt="" unoptimized />
+                {!setupComplete ? <span>Случайная расстановка</span> : null}
+              </Button>
+              {setupComplete ? <Button className="battle-footer__start" onClick={() => void startGame()}>Начать игру</Button> : null}
+            </GameFooter>
         : phase === 'finished'
-          ? <GameFooter variant="button" onPlayAgain={restart} />
+          ? <GameFooter variant="button" onPlayAgain={() => void restart()} />
           : <GameFooter variant="ships" label={showingMine ? 'Мои корабли' : 'Корабли соперника'} ships={footerShips(battleFleet)} />}
     />
   );
