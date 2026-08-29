@@ -306,6 +306,11 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
     if (rotationTimerRef.current !== null) window.clearTimeout(rotationTimerRef.current);
   }, []);
 
+  useEffect(() => {
+    telegram.setVerticalSwipes(true);
+    return () => telegram.setVerticalSwipes(false);
+  }, []);
+
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!started || moving || winner || turn !== playerSide) return;
     const point = inputPoint(event);
