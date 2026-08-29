@@ -1,88 +1,83 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { classNames } from '../../lib/class-names';
 
-const MORPH_DURATION = 750;
+const LINEAR_DURATION = 120;
+const SETTLE_DURATION = 460;
+const STAGGER = 16;
 
-/** The Magic UI text-morph technique, adapted to run once for each turn change. */
-function MorphingText({ from, to }: { from: string; to: string }) {
-  const fromRef = useRef<HTMLSpanElement>(null);
-  const toRef = useRef<HTMLSpanElement>(null);
-  const rawId = useId();
-  const filterId = `game-status-threshold-${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+function splitGraphemes(value: string) {
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+    return Array.from(segmenter.segment(value), ({ segment }) => segment);
+  }
+  return Array.from(value);
+}
+
+function selectorAmount(localTime: number) {
+  if (localTime <= 0) return 1;
+  if (localTime < LINEAR_DURATION) return 1 - localTime / LINEAR_DURATION;
+  const linearPhase = LINEAR_DURATION / 1000;
+  const springTime = (localTime - LINEAR_DURATION) / 1000;
+  return (-1 / linearPhase) * Math.sin(springTime * Math.PI * 2) / (Math.exp(10 * springTime) * Math.PI * 2);
+}
+
+function characterFrames(): Keyframe[] {
+  return Array.from({ length: 42 }, (_, index) => {
+    const offset = index / 41;
+    const amount = index === 41 ? 0 : selectorAmount(SETTLE_DURATION * offset);
+    const positiveAmount = Math.max(amount, 0);
+    return {
+      offset,
+      opacity: Math.min(1, Math.max(0, 1 - amount)),
+      filter: `blur(${10 * positiveAmount}px)`,
+      transform: `translate3d(0, ${20 * amount}px, 0) rotate(${12 * amount}deg) scale(1, ${1 - 0.14 * amount})`,
+    };
+  });
+}
+
+function EmotionalStatusText({ text }: { text: string }) {
+  const hostRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    const fromNode = fromRef.current;
-    const toNode = toRef.current;
-    if (!fromNode || !toNode) return;
+    const host = hostRef.current;
+    if (!host || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const frames = characterFrames();
+    const animations = [...host.querySelectorAll<HTMLElement>('.serega-emotional__unit')].map((unit, index) =>
+      unit.animate(frames, {
+        delay: (index + 1) * STAGGER,
+        duration: SETTLE_DURATION,
+        easing: 'linear',
+        fill: 'both',
+      }),
+    );
+    return () => animations.forEach((animation) => animation.cancel());
+  }, [text]);
 
-    let frame = 0;
-    const startedAt = performance.now();
-
-    const paint = (progress: number) => {
-      const incomingBlur = Math.min(8 / Math.max(progress, 0.001) - 8, 100);
-      const outgoingProgress = 1 - progress;
-      const outgoingBlur = Math.min(8 / Math.max(outgoingProgress, 0.001) - 8, 100);
-      toNode.style.filter = `blur(${incomingBlur}px)`;
-      toNode.style.opacity = `${Math.pow(progress, 0.4)}`;
-      fromNode.style.filter = `blur(${outgoingBlur}px)`;
-      fromNode.style.opacity = `${Math.pow(outgoingProgress, 0.4)}`;
-    };
-
-    const animate = (now: number) => {
-      const progress = Math.min(1, (now - startedAt) / MORPH_DURATION);
-      paint(progress);
-      if (progress < 1) frame = window.requestAnimationFrame(animate);
-    };
-
-    paint(0);
-    frame = window.requestAnimationFrame(animate);
-    return () => window.cancelAnimationFrame(frame);
-  }, [from, to]);
+  let wordIndex = 0;
+  const words = splitGraphemes(text).reduce<string[][]>((result, grapheme) => {
+    if (/^\s+$/u.test(grapheme) && result.length) result[result.length - 1].push(grapheme);
+    else result.push([grapheme]);
+    return result;
+  }, []);
 
   return (
-    <span className="game-status__magic-morph" style={{ filter: `url(#${filterId}) blur(0.6px)` }} aria-hidden="true">
-      <span ref={fromRef} className="game-status__magic-label">{from}</span>
-      <span ref={toRef} className="game-status__magic-label">{to}</span>
-      <svg className="game-status__filters" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <filter id={filterId}>
-            <feColorMatrix
-              in="SourceGraphic"
-              type="matrix"
-              values="1 0 0 0 0
-                      0 1 0 0 0
-                      0 0 1 0 0
-                      0 0 0 255 -140"
-            />
-          </filter>
-        </defs>
-      </svg>
+    <span ref={hostRef} className="serega-emotional" aria-label={text}>
+      {words.map((word) => (
+        <span key={wordIndex++} className="serega-emotional__word" aria-hidden="true">
+          {word.map((grapheme, index) => <span key={`${grapheme}-${index}`} className="serega-emotional__unit">{grapheme}</span>)}
+        </span>
+      ))}
     </span>
   );
 }
 
 export function GameStatus({ children, muted = false }: { children: ReactNode; muted?: boolean }) {
   const label = String(children);
-  const previousLabel = useRef(label);
-  const [leavingLabel, setLeavingLabel] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (previousLabel.current === label) return;
-    setLeavingLabel(previousLabel.current);
-    previousLabel.current = label;
-    const timeout = window.setTimeout(() => setLeavingLabel(null), MORPH_DURATION);
-    return () => window.clearTimeout(timeout);
-  }, [label]);
-
-  const isMorphing = leavingLabel !== null;
   return (
     <div className={classNames('game-status', muted && 'game-status--muted')} aria-live="polite">
-      <span className={classNames('game-status__morph', isMorphing && 'is-morphing')}>
-        <span className="game-status__label">{label}</span>
-        {leavingLabel ? <MorphingText from={leavingLabel} to={label} /> : null}
-      </span>
+      <EmotionalStatusText key={label} text={label} />
     </div>
   );
 }
