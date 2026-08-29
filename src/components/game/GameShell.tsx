@@ -3,6 +3,7 @@ import { classNames } from '../../lib/class-names';
 import { GameHeader, type Opponent } from './GameHeader';
 import { GameStatus } from './GameStatus';
 import { Notice } from '../ui/Notice';
+import { GameOutcomeEffect, type GameOutcome } from './GameOutcomeEffect';
 
 type GameShellProps = {
   title: string;
@@ -18,12 +19,16 @@ type GameShellProps = {
 };
 
 export function GameShell({ title, opponent, onInvite, notice = null, status = '', statusMuted = false, hero, game, gameInset = true, footer }: GameShellProps) {
+  const outcome: GameOutcome | null = status === 'Победа' ? 'win' : status === 'Поражение' ? 'loss' : status === 'Ничья' ? 'draw' : null;
   return (
     <main className="game-screen" aria-label={`Игра ${title}`}>
       <GameHeader title={title} opponent={opponent} onInvite={onInvite} />
       <section className="game-layout">
         {hero ?? <GameStatus muted={statusMuted}>{status}</GameStatus>}
-        <section className={classNames('game-slot', gameInset && 'game-slot--inset')}>{game}</section>
+        <section className={classNames('game-slot', gameInset && 'game-slot--inset', outcome && `game-slot--${outcome}`)}>
+          {game}
+          <GameOutcomeEffect outcome={outcome} />
+        </section>
       </section>
       {footer}
       <Notice message={notice} />
