@@ -164,7 +164,7 @@ a { color: inherit; }
 .chapaev-piece--blue { background: var(--color-primary); }
 .chapaev-piece--black { background: var(--color-foreground); }
 .chapaev-piece.is-eliminated { z-index: 1; animation: chapaev-piece-dismiss 2s linear forwards; }
-@keyframes chapaev-piece-dismiss { 0% { transform: translate(-50%, -50%) scale(1); } 35%, 100% { transform: translate(-50%, -50%) scale(0); } }
+@keyframes chapaev-piece-dismiss { 0% { transform: translate(-50%, -50%) scale(1); } 15%, 100% { transform: translate(-50%, -50%) scale(0); } }
 .chapaev-guide { position: absolute; z-index: 3; display: block; transform-origin: 0 50%; clip-path: polygon(0 0, 0 100%, 100% calc(50% + 2px), 100% calc(50% - 2px)); background: linear-gradient(90deg, var(--color-primary-trail), var(--color-primary)); pointer-events: none; }
 .chapaev-footer__rotate { height: 56px; min-height: 56px; gap: var(--space-2); padding: 0 var(--space-6); }
 .chapaev-footer__rotate img { display: block; width: 20px; height: 20px; }

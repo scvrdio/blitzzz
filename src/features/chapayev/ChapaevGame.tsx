@@ -131,7 +131,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
         }
         piece.x += piece.vx * dt;
         piece.y += piece.vy * dt;
-        const damping = Math.pow(.035, dt);
+        const damping = Math.pow(.004, dt);
         piece.vx *= damping;
         piece.vy *= damping;
         if (Math.abs(piece.vx) < 5) piece.vx = 0;
