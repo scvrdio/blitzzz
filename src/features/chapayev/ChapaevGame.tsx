@@ -16,7 +16,7 @@ type Drag = { pieceId: string; x: number; y: number };
 
 const sides: Side[] = ['blue', 'black'];
 const opponentOf = (side: Side): Side => side === 'blue' ? 'black' : 'blue';
-const emptyGeometry: Geometry = { width: 0, height: 0, boardTop: 56, boardSize: 0, radius: 0 };
+const emptyGeometry: Geometry = { width: 0, height: 0, boardTop: 0, boardSize: 0, radius: 0 };
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const displayPointFor = (geometry: Geometry, flipped: boolean, x: number, y: number) =>
   flipped ? { x: geometry.boardSize - x, y: geometry.boardTop + geometry.boardSize - (y - geometry.boardTop) } : { x, y };
@@ -53,6 +53,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   const [boardRotation, setBoardRotation] = useState(0);
   const [isRotating, setIsRotating] = useState(false);
   const arenaRef = useRef<HTMLDivElement>(null);
+  const boardAreaRef = useRef<HTMLDivElement>(null);
   const piecesRef = useRef<Piece[]>([]);
   const geometryRef = useRef<Geometry>(emptyGeometry);
   const ranksRef = useRef<Record<Side, number>>({ blue: 7, black: 0 });
@@ -96,19 +97,20 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   };
 
   useEffect(() => {
-    const arena = arenaRef.current;
-    if (!arena) return;
+    const boardArea = boardAreaRef.current;
+    if (!boardArea) return;
     const updateGeometry = () => {
-      const rect = arena.getBoundingClientRect();
-      const boardSize = Math.min(rect.width, Math.max(0, rect.height - 104));
-      const next = { width: rect.width, height: rect.height, boardTop: 56, boardSize, radius: boardSize / 20 };
+      const rect = boardArea.getBoundingClientRect();
+      const boardTop = 0;
+      const boardSize = Math.min(rect.width, rect.height);
+      const next = { width: rect.width, height: rect.height, boardTop, boardSize, radius: boardSize / 20 };
       geometryRef.current = next;
       setGeometry(next);
       if (!started) setPieceState(setUpPieces(next, ranksRef.current));
     };
     updateGeometry();
     const observer = new ResizeObserver(updateGeometry);
-    observer.observe(arena);
+    observer.observe(boardArea);
     return () => observer.disconnect();
   }, [started]);
 
@@ -241,7 +243,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   };
 
   const inputPoint = (event: React.PointerEvent<HTMLDivElement>) => {
-    const rect = arenaRef.current?.getBoundingClientRect();
+    const rect = boardAreaRef.current?.getBoundingClientRect();
     return rect ? { x: event.clientX - rect.left, y: event.clientY - rect.top } : null;
   };
 
@@ -357,8 +359,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
     const dx = pointer.x - startPoint.x;
     const dy = pointer.y - startPoint.y;
     const length = Math.min(Math.hypot(dx, dy), 150);
-    const ratio = length / (Math.hypot(dx, dy) || 1);
-    return { x: startPoint.x, y: startPoint.y, angle: Math.atan2(dy, dx) * 180 / Math.PI, length, endX: startPoint.x + dx * ratio, endY: startPoint.y + dy * ratio };
+    return { x: startPoint.x, y: startPoint.y, angle: Math.atan2(dy, dx) * 180 / Math.PI, length, thickness: Math.min(34, Math.max(8, length * .22)) };
   }, [drag, flipped, geometry, pieces, rotationTurns]);
 
   const status = winner ? (winner === playerSide ? 'Победа' : 'Поражение') : !started ? (playerSide === 'blue' ? 'Твой ход' : 'Ход соперника') : turn === playerSide ? 'Твой ход' : 'Ход соперника';
@@ -392,9 +393,9 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
         >
-          <div className="chapaev-rotating-layer" style={{ transform: `rotate(${boardRotation * 90}deg) scale(${isRotating ? .75 : 1})`, transformOrigin: `${geometry.boardSize / 2}px ${geometry.boardTop + geometry.boardSize / 2}px` }}>
+          <div ref={boardAreaRef} className="chapaev-rotating-layer" style={{ transform: `rotate(${boardRotation * 90}deg) scale(${isRotating ? .75 : 1})`, transformOrigin: `${geometry.boardSize / 2}px ${geometry.boardTop + geometry.boardSize / 2}px` }}>
             <div className="chapaev-board" style={{ top: geometry.boardTop, width: geometry.boardSize, height: geometry.boardSize }} />
-            {guide ? <><span className="chapaev-guide" style={{ left: guide.x, top: guide.y, width: guide.length, transform: `rotate(${guide.angle}deg)` }} /><span className="chapaev-guide__handle" style={{ left: guide.endX, top: guide.endY }} /></> : null}
+            {guide ? <span className="chapaev-guide" style={{ left: guide.x, top: guide.y - guide.thickness / 2, width: guide.length, height: guide.thickness, transform: `rotate(${guide.angle}deg)` }} /> : null}
             {pieces.map((piece) => {
               const point = displayPointFor(geometry, flipped, piece.x, piece.y);
               return <span key={piece.id} className={`chapaev-piece chapaev-piece--${piece.side}${piece.eliminatedAt ? ' is-eliminated' : ''}`} style={{ left: point.x, top: point.y, width: geometry.radius * 2, height: geometry.radius * 2 }} aria-hidden="true" />;
