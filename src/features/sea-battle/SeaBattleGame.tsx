@@ -63,9 +63,11 @@ type BattleFieldsProps = {
   opponentShots: ShotBoard;
   interactive: boolean;
   onFire: (cell: number) => void;
+  revealOpponentShips?: boolean;
+  onToggleField?: () => void;
 };
 
-function BattleFields({ field, playerShips, opponentShips, playerShots, opponentShots, interactive, onFire }: BattleFieldsProps) {
+function BattleFields({ field, playerShips, opponentShips, playerShots, opponentShots, interactive, onFire, revealOpponentShips = false, onToggleField }: BattleFieldsProps) {
   const showingOpponent = field === 'opponent';
   return (
     <BattleBoardFrame>
@@ -73,9 +75,11 @@ function BattleFields({ field, playerShips, opponentShips, playerShots, opponent
         <div className={classNames('battle-board-flipper', showingOpponent && 'is-showing-opponent')}>
           <div className="battle-board-face battle-board-face--mine" aria-hidden={showingOpponent}>
             <BattleGrid ships={playerShips} shots={opponentShots} revealShips interactive={false} />
+            {onToggleField ? <button className="battle-board__view-toggle" type="button" onClick={onToggleField} aria-label="Показать поле соперника" /> : null}
           </div>
           <div className="battle-board-face battle-board-face--opponent" aria-hidden={!showingOpponent}>
-            <BattleGrid ships={opponentShips} shots={playerShots} revealShips={false} interactive={interactive && showingOpponent} onCellClick={onFire} />
+            <BattleGrid ships={opponentShips} shots={playerShots} revealShips={revealOpponentShips} interactive={interactive && showingOpponent} onCellClick={onFire} />
+            {onToggleField ? <button className="battle-board__view-toggle" type="button" onClick={onToggleField} aria-label="Показать своё поле" /> : null}
           </div>
         </div>
       </div>
@@ -150,11 +154,17 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
 
     roomRef.current = next;
     setRoom(next);
-    setPlayerShots([...shotsFor(next, side)]);
-    setOpponentShots([...shotsFor(next, enemySide)]);
+    const nextPlayerShots = shotsFor(next, side);
+    const nextOpponentShots = shotsFor(next, enemySide);
+    const opponentJustHit = !initial && previous
+      ? nextOpponentShots.some((shot, index) => shot === 'hit' && shotsFor(previous, enemySide)[index] !== 'hit')
+      : false;
+    setPlayerShots([...nextPlayerShots]);
+    setOpponentShots([...nextOpponentShots]);
     setOpponentShips(sunkFor(next, enemySide).map((ship) => ({ ...ship, cells: [...ship.cells] })));
     setPhase(nextPhase);
     setWinner(next.winner ? (next.winner === side ? 'player' : 'robot') : null);
+    if (opponentJustHit) telegram.impact('medium');
 
     if (previous && (previous.status === 'active' || previous.status === 'finished') && (next.status === 'placing' || next.status === 'waiting')) {
       setPlayerShips([]);
@@ -173,6 +183,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
       setField(next.winner === side ? 'opponent' : 'mine');
       setResolvingShot(false);
       if (previous?.status !== 'finished') telegram.notify(next.winner === side ? 'success' : 'error');
+      void loadFinishedOpponentFleet(next.id);
     }
   };
 
@@ -190,6 +201,12 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
     const { data, error } = await supabase.from('sea_battle_fleets').select('ships').eq('room_id', id).eq('player_id', currentUserId).maybeSingle();
     if (error) throw error;
     if (data && validFleet(data.ships)) setPlayerShips(data.ships.map((ship) => ({ ...ship, cells: [...ship.cells] })));
+  };
+
+  const loadFinishedOpponentFleet = async (id: string) => {
+    const { data, error } = await supabase.rpc('get_finished_sea_battle_opponent_fleet', { p_room_id: id });
+    if (error || !validFleet(data) || !mountedRef.current) return;
+    setOpponentShips(data.map((ship) => ({ ...ship, cells: [...ship.cells] })));
   };
 
   const connectRoom = async (id: string) => {
@@ -444,6 +461,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
   };
 
   const status = winner === 'player' ? 'Победа' : winner === 'robot' ? 'Поражение' : isMyTurn ? 'Твой ход' : 'Ход соперника';
+  const statusIsBlack = room ? (room.winner ?? room.turn) === 'guest' : winner === 'robot' || localTurn === 'robot';
   const showingMine = phase === 'setup' || field === 'mine';
   const displayedShots = showingMine ? opponentShots : playerShots;
   const battleFleet = showingMine ? survivingFleet(playerShips, displayedShots) : room ? fleetAfterSunk(opponentShips) : survivingFleet(opponentShips, displayedShots);
@@ -456,7 +474,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
       onInvite={invite}
       notice={notice.message}
       status={status}
-      statusMuted={!isMyTurn || winner === 'robot'}
+      statusMuted={statusIsBlack}
       hero={phase === 'setup' ? <FleetSetup ships={playerShips} waiting={waitingCopy} /> : undefined}
       gameInset={false}
       game={phase === 'setup'
@@ -480,6 +498,11 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
             opponentShots={opponentShots}
             interactive={phase === 'battle' && isMyTurn && !resolvingShot}
             onFire={(cell) => void fire(cell)}
+            revealOpponentShips={phase === 'finished'}
+            onToggleField={phase === 'finished' ? () => {
+              telegram.impact('light');
+              setField((current) => current === 'mine' ? 'opponent' : 'mine');
+            } : undefined}
           />}
       footer={phase === 'setup'
         ? myReady

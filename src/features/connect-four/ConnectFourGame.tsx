@@ -77,6 +77,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const remotePreview = room?.status === 'active' && room.turn !== myChip && room.preview_player && room.preview_player !== userId && Number.isInteger(room.preview_column) ? room.preview_column : null;
   const previewColumn = remotePreview ?? selected;
   const previewChip: Chip = room?.status === 'active' ? room.turn : room ? myChip : localTurn;
+  const statusChip: Chip | 'draw' = winner ?? (room?.status === 'active' ? room.turn : localTurn);
 
   useEffect(() => { boardRef.current = board; }, [board]);
 
@@ -417,7 +418,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       onInvite={invite}
       notice={notice.message}
       status={status}
-      statusMuted={status === 'Ход соперника' || status === 'Поражение' || status === 'Ничья'}
+      statusMuted={statusChip === 'black' || statusChip === 'draw'}
       game={
         <section className="connect-sheet" ref={sheetRef} aria-label="Игровое поле">
           <div className="connect-hole-layer" ref={holeLayerRef} aria-hidden="true" />

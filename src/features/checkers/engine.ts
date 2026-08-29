@@ -133,6 +133,15 @@ function applySequence(board: readonly CheckerCell[], sequence: MoveSequence, ca
   return completeCheckerTurn(next, nextCaptured);
 }
 
+function sameBoard(left: readonly CheckerCell[], right: readonly CheckerCell[]) {
+  return left.length === right.length && left.every((cell, index) => cell === right[index]);
+}
+
+/** Reconstructs the individual jumps of a completed turn stored as one board update. */
+export function findCheckerTurnSequence(color: CheckerColor, before: readonly CheckerCell[], after: readonly CheckerCell[]) {
+  return turnSequences(color, before).find((sequence) => sameBoard(applySequence(before, sequence), after)) ?? null;
+}
+
 function positionScore(board: readonly CheckerCell[]) {
   return board.reduce((total, piece, index) => {
     if (!piece) return total;

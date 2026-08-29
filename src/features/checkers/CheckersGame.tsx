@@ -10,7 +10,7 @@ import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { telegram, telegramProfile } from '../../lib/telegram/client';
 import { useNotice } from '../../hooks/use-notice';
 import { useTimeoutRegistry } from '../../hooks/use-timeout-registry';
-import { applyCheckerMove, checkerColor, chooseBotMove, completeCheckerTurn, initialCheckersBoard, isKing, legalMoves, pieceMoves, type CheckerCell, type CheckerColor } from './engine';
+import { applyCheckerMove, checkerColor, chooseBotMove, completeCheckerTurn, findCheckerTurnSequence, initialCheckersBoard, isKing, legalMoves, pieceMoves, type CheckerCell, type CheckerColor } from './engine';
 
 type CheckersRoom = {
   id: string;
@@ -18,6 +18,8 @@ type CheckersRoom = {
   black_player: string | null;
   blue_name: string | null;
   black_name: string | null;
+  blue_avatar: string | null;
+  black_avatar: string | null;
   status: 'waiting' | 'active' | 'finished';
   turn: CheckerColor;
   winner: CheckerColor | null;
@@ -28,6 +30,7 @@ type CheckersRoom = {
 const columns = 'ABCDEFGH';
 const rows = '12345678';
 const difficultyLabels = ['Очень легко', 'Легко', 'Нормально', 'Сложно', 'Очень сложно'] as const;
+const pause = (delay: number) => new Promise<void>((resolve) => window.setTimeout(resolve, delay));
 
 function validRoom(value: unknown): value is CheckersRoom {
   if (!value || typeof value !== 'object') return false;
@@ -47,19 +50,24 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
   const [started, setStarted] = useState(false);
   const [room, setRoom] = useState<CheckersRoom | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [movingPiece, setMovingPiece] = useState<number | null>(null);
   const notice = useNotice();
   const timers = useTimeoutRegistry();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const roomRef = useRef<CheckersRoom | null>(null);
   const mountedRef = useRef(true);
+  const remoteQueueRef = useRef(Promise.resolve());
 
   const myColor: CheckerColor = room?.blue_player === userId ? 'blue' : room?.black_player === userId ? 'black' : 'blue';
   const flipped = Boolean(room && myColor === 'black');
+  const statusColor: CheckerColor = finished ?? (room?.status === 'active' ? room.turn : locked ? 'black' : 'blue');
   const available = useMemo(() => selected === null ? [] : legalMoves(myColor, cells, chainPiece, capturedThisTurn).filter((move) => move.from === selected), [capturedThisTurn, cells, chainPiece, myColor, selected]);
   const opponent = useMemo(() => {
     if (!room) return { name: 'Соперник Робот' };
     if (room.status === 'waiting') return { name: 'Ждём соперника' };
-    return { name: myColor === 'blue' ? room.black_name || 'Игрок' : room.blue_name || 'Игрок', multiplayer: true };
+    return myColor === 'blue'
+      ? { name: room.black_name || 'Игрок', avatar: room.black_avatar || undefined, multiplayer: true }
+      : { name: room.blue_name || 'Игрок', avatar: room.blue_avatar || undefined, multiplayer: true };
   }, [myColor, room]);
 
   const finish = (winner: CheckerColor) => {
@@ -68,6 +76,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     setSelected(null);
     setChainPiece(null);
     setCapturedThisTurn([]);
+    setMovingPiece(null);
     setStatus(winner === myColor ? 'Победа' : 'Поражение');
     telegram.notify(winner === myColor ? 'success' : 'error');
   };
@@ -83,6 +92,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     setSelected(null);
     setChainPiece(null);
     setCapturedThisTurn([]);
+    setMovingPiece(null);
     const color: CheckerColor = next.blue_player === currentUserId ? 'blue' : 'black';
     if (next.status === 'finished' && next.winner) {
       setFinished(next.winner);
@@ -97,12 +107,46 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     setStatus(waiting ? '' : isLocked ? 'Ход соперника' : 'Твой ход');
   };
 
+  const processRemoteRoom = async (next: CheckersRoom, currentUserId: string) => {
+    const previous = roomRef.current;
+    const color: CheckerColor = previous?.blue_player === currentUserId ? 'blue' : 'black';
+    const isOpponentTurn = previous?.status === 'active' && previous.turn !== color;
+    const sequence = previous && isOpponentTurn ? findCheckerTurnSequence(previous.turn, previous.board, next.board) : null;
+
+    if (!previous || !sequence?.some((move) => move.capture !== null)) {
+      syncRoom(next, currentUserId);
+      return;
+    }
+
+    setLocked(true);
+    setStatus('Ход соперника');
+    setSelected(null);
+    let displayedBoard = [...previous.board];
+    for (const move of sequence) {
+      if (!mountedRef.current) return;
+      displayedBoard = applyCheckerMove(displayedBoard, move, false);
+      setMovingPiece(move.to);
+      setCells([...displayedBoard]);
+      await pause(180);
+      if (move.capture !== null) {
+        displayedBoard[move.capture] = null;
+        setCells([...displayedBoard]);
+        telegram.impact('medium');
+        await pause(180);
+      }
+    }
+    if (!mountedRef.current) return;
+    syncRoom(next, currentUserId);
+  };
+
   const subscribe = (id: string, currentUserId: string) => {
     void channelRef.current?.unsubscribe();
     channelRef.current = supabase
       .channel(`checkers-${id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'checkers_rooms', filter: `id=eq.${id}` }, ({ new: next }) => {
-        if (validRoom(next)) syncRoom(next, currentUserId);
+        if (validRoom(next)) {
+          remoteQueueRef.current = remoteQueueRef.current.then(() => processRemoteRoom(next, currentUserId));
+        }
       })
       .subscribe();
   };
@@ -111,7 +155,11 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     const user = await ensureAnonymousUser();
     setUserId(user.id);
     const profile = telegramProfile();
-    const { data, error } = await supabase.rpc('join_checkers_room', { room_id: id, player_name: profile?.name ?? 'Игрок' });
+    const { data, error } = await supabase.rpc('join_checkers_room', {
+      room_id: id,
+      player_name: profile?.name ?? 'Игрок',
+      player_avatar: profile?.photoUrl ?? null,
+    });
     if (error) throw error;
     if (!validRoom(data)) throw new Error('Сервер вернул некорректное состояние игры');
     subscribe(id, user.id);
@@ -227,7 +275,10 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
         const user: User = await ensureAnonymousUser();
         setUserId(user.id);
         const profile = telegramProfile();
-        const { data, error } = await supabase.rpc('create_checkers_room', { player_name: profile?.name ?? 'Игрок' });
+        const { data, error } = await supabase.rpc('create_checkers_room', {
+          player_name: profile?.name ?? 'Игрок',
+          player_avatar: profile?.photoUrl ?? null,
+        });
         if (error) throw error;
         if (!validRoom(data)) throw new Error('Сервер вернул некорректную игровую сессию');
         activeRoom = data;
@@ -253,7 +304,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
       onInvite={invite}
       notice={notice.message}
       status={status}
-      statusMuted={locked || (finished !== null && finished !== myColor)}
+      statusMuted={statusColor === 'black'}
       gameInset={false}
       game={
         <section className="checkers-sheet" aria-label="Поле шашек">
@@ -264,7 +315,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
               {screenIndices.map((index, screenIndex) => {
                 const piece = cells[index];
                 const isAvailable = available.some((move) => move.to === index);
-                return <button key={index} type="button" className={classNames('checker-square', selected === index && 'is-selected', isAvailable && 'is-available')} aria-label={`${displayedColumns[screenIndex % 8] ?? ''}${displayedRows[Math.floor(screenIndex / 8)] ?? ''}${piece ? `, ${checkerColor(piece) === 'blue' ? 'синяя' : 'чёрная'} шашка${isKing(piece) ? ', дамка' : ''}` : ''}`} disabled={locked} onClick={() => tap(index)}>{piece && <span className={classNames('checker-piece', `checker-piece--${checkerColor(piece)}`, isKing(piece) && 'is-king')} aria-hidden="true" />}</button>;
+                return <button key={index} type="button" className={classNames('checker-square', selected === index && 'is-selected', isAvailable && 'is-available')} aria-label={`${displayedColumns[screenIndex % 8] ?? ''}${displayedRows[Math.floor(screenIndex / 8)] ?? ''}${piece ? `, ${checkerColor(piece) === 'blue' ? 'синяя' : 'чёрная'} шашка${isKing(piece) ? ', дамка' : ''}` : ''}`} disabled={locked} onClick={() => tap(index)}>{piece && <span className={classNames('checker-piece', `checker-piece--${checkerColor(piece)}`, isKing(piece) && 'is-king', movingPiece === index && 'is-moving')} aria-hidden="true" />}</button>;
               })}
             </div>
             <div className="checkers-rows checkers-rows--right">{displayedRows.map((label) => <span key={label}>{label}</span>)}</div>
