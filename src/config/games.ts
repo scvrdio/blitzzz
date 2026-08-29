@@ -1,14 +1,14 @@
-export const gameIds = ['four-in-a-row', 'checkers', 'tic-tac-toe', 'sea-battle'] as const;
+export const gameIds = ['four-in-a-row', 'checkers', 'tic-tac-toe', 'sea-battle', 'chapayev'] as const;
 
 export type GameId = (typeof gameIds)[number];
-export type GamePreviewKind = GameId | 'quoridor' | 'chapayev';
+export type GamePreviewKind = GameId | 'quoridor';
 
 export type GameDefinition = {
   id: GamePreviewKind;
   title: string;
   description: string;
   href?: `/games/${GameId}`;
-  startPrefix?: 'game_' | 'checkers_' | 'tic_tac_toe' | 'sea_battle_';
+  startPrefix?: 'game_' | 'checkers_' | 'tic_tac_toe' | 'sea_battle_' | 'chapayev';
 };
 
 export const games: readonly GameDefinition[] = [
@@ -41,7 +41,7 @@ export const games: readonly GameDefinition[] = [
     startPrefix: 'sea_battle_',
   },
   { id: 'quoridor', title: 'Коридор', description: 'Дойди до края поля первым, задерживая противника стенами' },
-  { id: 'chapayev', title: 'Чапаева', description: 'Выбей фишки соперника и дойди первым до края поля' },
+  { id: 'chapayev', title: 'Чапаева', description: 'Выбей фишки соперника и дойди первым до края поля', href: '/games/chapayev', startPrefix: 'chapayev' },
 ] as const;
 
 export function gamePathFromStartParam(startParam?: string | null): string | null {

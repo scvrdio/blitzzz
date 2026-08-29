@@ -156,6 +156,19 @@ a { color: inherit; }
 .checker-piece.is-king::after { content: ''; position: absolute; inset: 33%; border: 2px solid var(--color-background); border-radius: 50%; }
 .checker-piece.is-moving { animation: checker-piece-step 180ms var(--ease-standard); }
 @keyframes checker-piece-step { from { transform: scale(.74); opacity: .45; } to { transform: scale(1); opacity: 1; } }
+
+.chapaev-arena { position: relative; width: 100%; height: min(500px, 58dvh); min-height: 390px; touch-action: none; user-select: none; }
+.chapaev-rotating-layer { position: absolute; inset: 0; transition: transform 400ms var(--ease-standard); pointer-events: none; }
+.chapaev-board { position: absolute; left: 0; overflow: hidden; border-radius: 22px; background-color: var(--color-surface); background-image: linear-gradient(var(--color-background) 1px, transparent 1px), linear-gradient(90deg, var(--color-background) 1px, transparent 1px); background-size: 12.5% 12.5%; pointer-events: none; }
+.chapaev-piece { position: absolute; z-index: 2; display: block; border-radius: 50%; transform: translate(-50%, -50%); will-change: left, top; }
+.chapaev-piece--blue { background: var(--color-primary); }
+.chapaev-piece--black { background: var(--color-foreground); }
+.chapaev-piece.is-eliminated { z-index: 1; animation: chapaev-piece-dismiss 2s linear forwards; }
+@keyframes chapaev-piece-dismiss { 0% { transform: translate(-50%, -50%) scale(1); } 35%, 100% { transform: translate(-50%, -50%) scale(0); } }
+.chapaev-guide { position: absolute; z-index: 3; display: block; height: 8px; border-radius: var(--radius-round); transform-origin: 0 50%; background: linear-gradient(90deg, var(--color-primary-trail), var(--color-primary)); pointer-events: none; }
+.chapaev-guide__handle { position: absolute; z-index: 3; width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--color-primary); pointer-events: none; }
+.chapaev-footer__rotate { height: 56px; min-height: 56px; gap: var(--space-2); padding: 0 var(--space-6); }
+.chapaev-footer__rotate img { display: block; width: 20px; height: 20px; }
 .connect-sheet { --connect-cell-gap: var(--space-2); --connect-cell-size: calc((100% - 48px) * .142857); position: relative; width: 100%; padding: var(--space-4); border-radius: var(--radius-xl); background: var(--color-surface); }
 .connect-board-wrap { position: relative; }
 .connect-hole-layer, .connect-body-layer { position: absolute; inset: 0; pointer-events: none; }
