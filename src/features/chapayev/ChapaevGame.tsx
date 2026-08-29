@@ -7,6 +7,7 @@ import { GameShell } from '../../components/game/GameShell';
 import { Button } from '../../components/ui/Button';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { telegram } from '../../lib/telegram/client';
+import { playGameSound } from '../../lib/game-sound';
 import { useNotice } from '../../hooks/use-notice';
 
 type Side = 'blue' | 'black';
@@ -171,6 +172,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
             second.vx += impulse * nx;
             second.vy += impulse * ny;
             telegram.impact(Math.abs(relativeSpeed) > 480 ? 'heavy' : Math.abs(relativeSpeed) > 180 ? 'medium' : 'light');
+            playGameSound('/sounds/tap-eq303.wav');
             if (Math.abs(relativeSpeed) > 480) setImpactTick((tick) => tick + 1);
           }
           changed = true;
