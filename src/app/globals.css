@@ -159,7 +159,7 @@ a { color: inherit; }
 
 .chapaev-arena { position: relative; width: 100%; height: min(500px, 58dvh); min-height: 390px; touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
 .chapaev-rotating-layer { position: absolute; inset: 0; transition: transform 400ms var(--ease-standard); pointer-events: none; }
-.chapaev-board { position: absolute; left: 0; overflow: hidden; border-radius: 22px; background-color: var(--color-surface); background-image: linear-gradient(var(--color-background) 1px, transparent 1px), linear-gradient(90deg, var(--color-background) 1px, transparent 1px); background-size: 12.5% 12.5%; pointer-events: none; }
+.chapaev-board { position: absolute; left: 0; overflow: hidden; border-radius: 28px; corner-shape: superellipse(1.2); background-color: var(--color-surface); background-image: linear-gradient(var(--color-background) 1px, transparent 1px), linear-gradient(90deg, var(--color-background) 1px, transparent 1px); background-size: 12.5% 12.5%; pointer-events: none; }
 .chapaev-piece { position: absolute; z-index: 2; display: block; border-radius: 50%; transform: translate(-50%, -50%); }
 .chapaev-piece--blue { background: var(--color-primary); }
 .chapaev-piece--black { background: var(--color-foreground); }
