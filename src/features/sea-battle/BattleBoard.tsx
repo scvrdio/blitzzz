@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
 import { classNames } from '../../lib/class-names';
 import { isShipSunk, seaBattleSize, shipAt, type Ship, type ShotBoard } from './engine';
 
@@ -50,6 +50,17 @@ function shipPosition(cells: readonly number[]): { style: CSSProperties; horizon
 
 export function BattleGrid({ ships, shots, revealShips, interactive = false, draftCells = [], draftValid = false, showRemoveHints = false, onCellClick, onDragStart, onDragMove, onDragEnd }: BattleGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const sunkRef = useRef<Set<string> | null>(null);
+  const [sunkTick, setSunkTick] = useState(0);
+
+  useEffect(() => {
+    const sunk = new Set(ships.filter((ship) => isShipSunk(ship, shots)).map((ship) => ship.id));
+    const animationFrame = sunkRef.current && [...sunk].some((id) => !sunkRef.current?.has(id))
+      ? window.requestAnimationFrame(() => setSunkTick((tick) => tick + 1))
+      : null;
+    sunkRef.current = sunk;
+    return () => { if (animationFrame !== null) window.cancelAnimationFrame(animationFrame); };
+  }, [ships, shots]);
 
   const cellFromPointer = (event: PointerEvent<HTMLDivElement>) => {
     const rect = gridRef.current?.getBoundingClientRect();
@@ -81,7 +92,7 @@ export function BattleGrid({ ships, shots, revealShips, interactive = false, dra
 
   return (
     <div
-      className="battle-board__grid"
+      className={classNames('battle-board__grid', sunkTick > 0 && `is-sunk-${sunkTick % 2}`)}
       ref={gridRef}
       onPointerDown={startPointer}
       onPointerMove={movePointer}

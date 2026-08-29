@@ -56,6 +56,7 @@ export function TicTacToeGame() {
   const notice = useNotice();
   const timers = useTimeoutRegistry();
   const result = useMemo(() => resultFor(cells), [cells]);
+  const winningLine = useMemo<readonly number[]>(() => winner(cells) ?? [], [cells]);
   const status = result === 'x' ? 'Победа' : result === 'o' ? 'Поражение' : result === 'draw' ? 'Ничья' : robotThinking ? 'Ход соперника' : 'Твой ход';
 
   const finishFeedback = (nextResult: Result) => {
@@ -111,7 +112,7 @@ export function TicTacToeGame() {
       game={
         <div className="tic-board" aria-label="Поле крестиков-ноликов">
           {cells.map((cell, index) => (
-            <button key={index} type="button" className={`tic-cell${cell ? ` tic-cell--${cell}` : ''}`} aria-label={cell ? `Ячейка ${index + 1}: ${cell === 'x' ? 'крестик' : 'нолик'}` : `Ячейка ${index + 1}`} disabled={robotThinking || Boolean(result) || Boolean(cell)} onClick={() => move(index)}>
+            <button key={index} type="button" className={`tic-cell${cell ? ` tic-cell--${cell}` : ''}${winningLine.includes(index) ? ' is-winning' : ''}`} aria-label={cell ? `Ячейка ${index + 1}: ${cell === 'x' ? 'крестик' : 'нолик'}` : `Ячейка ${index + 1}`} disabled={robotThinking || Boolean(result) || Boolean(cell)} onClick={() => move(index)}>
               {cell ? <TicMark mark={cell} /> : null}
             </button>
           ))}

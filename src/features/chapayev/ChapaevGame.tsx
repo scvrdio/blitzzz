@@ -43,7 +43,7 @@ function setUpPieces(geometry: Geometry, ranks: Record<Side, number>) {
 }
 
 export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
-  const [started, setStarted] = useState(false);
+  const [started, setStarted] = useState(true);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [geometry, setGeometry] = useState<Geometry>(emptyGeometry);
   const [turn, setTurn] = useState<Side>('blue');
@@ -52,6 +52,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   const [winner, setWinner] = useState<Side | null>(null);
   const [boardRotation, setBoardRotation] = useState(0);
   const [isRotating, setIsRotating] = useState(false);
+  const [impactTick, setImpactTick] = useState(0);
   const arenaRef = useRef<HTMLDivElement>(null);
   const boardAreaRef = useRef<HTMLDivElement>(null);
   const piecesRef = useRef<Piece[]>([]);
@@ -106,13 +107,13 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
       const next = { width: rect.width, height: rect.height, boardTop, boardSize, radius: boardSize / 20 };
       geometryRef.current = next;
       setGeometry(next);
-      if (!started) setPieceState(setUpPieces(next, ranksRef.current));
+      if (!piecesRef.current.length) setPieceState(setUpPieces(next, ranksRef.current));
     };
     updateGeometry();
     const observer = new ResizeObserver(updateGeometry);
     observer.observe(boardArea);
     return () => observer.disconnect();
-  }, [started]);
+  }, []);
 
   useEffect(() => {
     const tick = (time: number) => {
@@ -170,6 +171,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
             second.vx += impulse * nx;
             second.vy += impulse * ny;
             telegram.impact(Math.abs(relativeSpeed) > 480 ? 'heavy' : Math.abs(relativeSpeed) > 180 ? 'medium' : 'light');
+            if (Math.abs(relativeSpeed) > 480) setImpactTick((tick) => tick + 1);
           }
           changed = true;
         }
@@ -386,7 +388,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
       game={
         <div
           ref={arenaRef}
-          className="chapaev-arena"
+          className={`chapaev-arena${impactTick ? ` chapaev-arena--impact-${impactTick % 2}` : ''}`}
           aria-label="Поле игры Чапаева"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -405,9 +407,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
       }
       footer={winner
         ? <GameFooter variant="button" onPlayAgain={start} />
-        : !started
-          ? <GameFooter variant="button" label="Начать игру" onPlayAgain={start} />
-          : <GameFooter variant="custom" className="chapaev-footer">
+        : <GameFooter variant="custom" className="chapaev-footer">
               <Button
                 className="chapaev-footer__rotate"
                 variant="surface"
