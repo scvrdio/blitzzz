@@ -137,7 +137,6 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
         const leftBoard = piece.x < 0 || piece.x > world.boardSize || piece.y < world.boardTop || piece.y > world.boardTop + world.boardSize;
         if (leftBoard && !piece.eliminatedAt) {
           piece.eliminatedAt = now;
-          telegram.notify('warning');
           changed = true;
         }
       }
@@ -317,6 +316,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
       return Math.hypot(display.x - point.x, display.y - point.y) <= geometryRef.current.radius * 1.2;
     });
     if (!candidate) return;
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     const next = { pieceId: candidate.id, ...point };
     dragRef.current = next;
@@ -326,6 +326,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
+    event.preventDefault();
     const point = inputPoint(event);
     if (!point) return;
     const next = { pieceId: dragRef.current.pieceId, ...point };
@@ -334,6 +335,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   };
 
   const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current) event.preventDefault();
     const activeDrag = dragRef.current;
     const point = inputPoint(event);
     if (activeDrag && point) launch(activeDrag.pieceId, point);
