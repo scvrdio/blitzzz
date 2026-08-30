@@ -63,14 +63,10 @@ a { color: inherit; }
 .game-layout { position: relative; display: flex; flex: 1; min-height: 0; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--space-8); width: 100%; }
 .game-status { display: grid; flex: 1; min-height: 0; place-items: center; width: 100%; color: var(--color-primary); text-align: center; font-size: var(--font-size-display); font-weight: var(--weight-black); line-height: var(--line-height-tight); }
 .game-status--muted { color: var(--color-foreground); }
-.turn-indicator { display: flex; flex: 1; min-height: 0; align-items: center; justify-content: center; width: 100%; }
-.turn-indicator__avatar { display: grid; place-items: center; flex: none; width: 64px; height: 64px; border: 2px solid var(--color-foreground); border-radius: 50%; background: var(--color-background); color: var(--color-foreground); font-size: 24px; font-weight: var(--weight-black); line-height: 1; transition: transform 180ms var(--ease-standard); }
-.turn-indicator__avatar--blue { border-color: var(--color-primary); color: var(--color-primary); }
-.turn-indicator__avatar.is-inactive { opacity: .2; }
-.turn-indicator__arrow { flex: none; width: 16px; height: 16px; margin-left: 16px; background: var(--color-primary); -webkit-mask: url('/icons/turn-indicator-arrow.svg') center / contain no-repeat; mask: url('/icons/turn-indicator-arrow.svg') center / contain no-repeat; transform: rotate(0deg); transition: transform 220ms var(--ease-standard), background-color 180ms ease; }
-.turn-indicator__avatar:last-child { margin-left: 16px; }
-.turn-indicator--black .turn-indicator__arrow { background: var(--color-foreground); }
-.turn-indicator.is-opponent-turn .turn-indicator__arrow { transform: rotate(180deg); }
+.turn-indicator { display: flex; flex: 1; min-height: 0; align-items: flex-start; justify-content: center; gap: var(--space-1); width: 100%; padding-top: var(--space-4); }
+.turn-indicator__dot { display: block; flex: none; width: 16px; height: 16px; border: 2px solid var(--color-foreground); border-radius: var(--radius-xl); background: var(--color-foreground); transition: opacity var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard), border-color var(--motion-normal) ease, background-color var(--motion-normal) ease; }
+.turn-indicator__dot--blue { border-color: var(--color-primary); background: var(--color-primary); }
+.turn-indicator__dot.is-inactive { opacity: .2; transform: scale(.92); }
 .serega-emotional { display: inline-block; }
 .serega-emotional__word { display: inline-block; white-space: nowrap; }
 .serega-emotional__unit { display: inline-block; transform-origin: 50% 55%; white-space: pre; will-change: opacity, filter, transform; }
