@@ -12,6 +12,7 @@ import { classNames } from '../../lib/class-names';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { ensureAnonymousUser, supabase } from '../../lib/supabase/client';
 import { telegram, telegramProfile } from '../../lib/telegram/client';
+import { playGameSound } from '../../lib/game-sound';
 import { BattleBoard, BattleBoardFrame, BattleGrid } from './BattleBoard';
 import { canPlaceShip, chooseRobotTarget, emptyShots, fireAt, fleetCounts, fleetSizes, placementCells, randomFleet, remainingFleet, shipAt, survivingFleet, type FleetCounts, type Ship, type ShipSize, type ShotBoard } from './engine';
 import { opponentSide, readyFor, shotsFor, sideForUser, sunkFor, validFleet, validSeaBattleRoom, type SeaBattleRoom } from './multiplayer';
@@ -278,7 +279,10 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
     const start = dragStartRef.current;
     if (start === null || myReady) return;
     const next = placementCells(start, current, playerShips);
-    if (next.length !== draftRef.current.length) telegram.selectionChanged();
+    if (next.length !== draftRef.current.length) {
+      playGameSound('/sounds/ship-miss.wav');
+      telegram.selectionChanged();
+    }
     draftRef.current = next;
     setDraft(next);
     setDraftValid(canPlaceShip(playerShips, next));
@@ -289,6 +293,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
     const existing = shipAt(playerShips, cell);
     if (existing) {
       setPlayerShips((current) => current.filter((ship) => ship.id !== existing.id));
+      playGameSound('/sounds/ship-miss.wav');
       telegram.impact('light');
       return;
     }
@@ -304,6 +309,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
       const size = cells.length as ShipSize;
       const ship: Ship = { id: `manual-${nextShipIdRef.current++}`, size, cells };
       setPlayerShips((current) => [...current, ship]);
+      playGameSound('/sounds/ship-miss.wav');
       telegram.impact('medium');
     } else {
       telegram.notify('warning');

@@ -61,7 +61,7 @@ export function BattleGrid({ ships, shots, revealShips, interactive = false, dra
     const previous = shotsRef.current;
     const newShot = previous ? shots.find((shot, index) => Boolean(shot) && !previous[index]) : null;
     shotsRef.current = shots;
-    if (newShot === 'hit') playGameSound('/sounds/ship-hit.wav');
+    if (newShot === 'hit') playGameSound('/sounds/ship-hit.wav', .25);
     if (newShot === 'miss') playGameSound('/sounds/ship-miss.wav');
   }, [shots]);
 
