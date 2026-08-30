@@ -280,7 +280,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
     if (start === null || myReady) return;
     const next = placementCells(start, current, playerShips);
     if (next.length !== draftRef.current.length) {
-      playGameSound('/sounds/ship-miss.wav');
+      playGameSound('/sounds/ship-miss.wav', .5);
       telegram.selectionChanged();
     }
     draftRef.current = next;
@@ -293,7 +293,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
     const existing = shipAt(playerShips, cell);
     if (existing) {
       setPlayerShips((current) => current.filter((ship) => ship.id !== existing.id));
-      playGameSound('/sounds/ship-miss.wav');
+      playGameSound('/sounds/ship-miss.wav', .5);
       telegram.impact('light');
       return;
     }
@@ -309,7 +309,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
       const size = cells.length as ShipSize;
       const ship: Ship = { id: `manual-${nextShipIdRef.current++}`, size, cells };
       setPlayerShips((current) => [...current, ship]);
-      playGameSound('/sounds/ship-miss.wav');
+      playGameSound('/sounds/ship-miss.wav', .5);
       telegram.impact('medium');
     } else {
       telegram.notify('warning');

@@ -177,7 +177,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
             second.vx += impulse * nx;
             second.vy += impulse * ny;
             telegram.impact(Math.abs(relativeSpeed) > 480 ? 'heavy' : Math.abs(relativeSpeed) > 180 ? 'medium' : 'light');
-            playGameSound('/sounds/ship-miss.wav');
+            playGameSound('/sounds/ship-miss.wav', .5);
             if (Math.abs(relativeSpeed) > 480) setImpactTick((tick) => tick + 1);
           }
           changed = true;
@@ -275,7 +275,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
     };
     strikerIdRef.current = pieceId;
     setMovingState(true);
-    playGameSound('/sounds/ship-miss.wav');
+    playGameSound('/sounds/ship-miss.wav', .5);
     telegram.impact(power > 140 ? 'heavy' : 'medium');
   };
 
