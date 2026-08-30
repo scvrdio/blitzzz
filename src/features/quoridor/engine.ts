@@ -1,6 +1,6 @@
 export type Side = 'blue' | 'black';
 export type Position = { row: number; col: number };
-export type Wall = { row: number; col: number; orientation: 'horizontal' | 'vertical' };
+export type Wall = { row: number; col: number; orientation: 'horizontal' | 'vertical'; side?: Side };
 export type GameState = { blue: Position; black: Position; walls: Wall[] };
 
 const size = 9;
