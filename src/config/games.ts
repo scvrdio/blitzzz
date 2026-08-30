@@ -15,16 +15,9 @@ export const games: readonly GameDefinition[] = [
   {
     id: 'four-in-a-row',
     title: 'Четыре в ряд',
-    description: 'Собери четыре фишки в линию раньше соперника',
+    description: 'Собери четыре фишки в линию',
     href: '/games/four-in-a-row',
     startPrefix: 'game_',
-  },
-  {
-    id: 'checkers',
-    title: 'Шашки',
-    description: 'Забери все шашки соперника или заблокируй его ходы',
-    href: '/games/checkers',
-    startPrefix: 'checkers_',
   },
   {
     id: 'tic-tac-toe',
@@ -36,12 +29,19 @@ export const games: readonly GameDefinition[] = [
   {
     id: 'sea-battle',
     title: 'Морской бой',
-    description: 'Найди и потопи корабли соперника',
+    description: 'Найди и потопи корабли',
     href: '/games/sea-battle',
     startPrefix: 'sea_battle_',
   },
-  { id: 'quoridor', title: 'Коридор', description: 'Дойди до края поля первым, задерживая противника стенами', href: '/games/quoridor', startPrefix: 'quoridor' },
-  { id: 'chapayev', title: 'Чапаева', description: 'Выбей фишки соперника и дойди первым до края поля', href: '/games/chapayev', startPrefix: 'chapayev' },
+  {
+    id: 'checkers',
+    title: 'Шашки',
+    description: 'Забери все шашки',
+    href: '/games/checkers',
+    startPrefix: 'checkers_',
+  },
+  { id: 'quoridor', title: 'Коридор', description: 'Дойди до края поля первым', href: '/games/quoridor', startPrefix: 'quoridor' },
+  { id: 'chapayev', title: 'Чапаева', description: 'Сбей все шашки', href: '/games/chapayev', startPrefix: 'chapayev' },
 ] as const;
 
 export function gamePathFromStartParam(startParam?: string | null): string | null {
