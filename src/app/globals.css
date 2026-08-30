@@ -11,13 +11,13 @@ button { appearance: none; font: inherit; }
 a { color: inherit; }
 :focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
 
-.button { min-height: var(--size-control); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-round); padding: 0 var(--space-4); color: inherit; background: transparent; font: var(--weight-bold) var(--font-size-md)/20px var(--font-family-brand); text-decoration: none; cursor: pointer; transition: transform 720ms cubic-bezier(.2, .8, .2, 1), opacity var(--motion-fast) ease; }
+.button { min-height: var(--size-control); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-round); padding: 0 var(--space-4); color: inherit; background: transparent; font: var(--weight-bold) var(--font-size-md)/20px var(--font-family-brand); text-decoration: none; cursor: pointer; transition: transform 3000ms cubic-bezier(.2, .8, .2, 1), opacity var(--motion-fast) ease; }
 .button--primary { height: var(--size-action); background: var(--color-foreground); color: var(--color-surface-subtle); }
 .button--surface { background: var(--color-surface); }
 .button--ghost { background: var(--color-overlay); }
 .button--icon { width: var(--size-control-large); height: var(--size-control-large); min-height: 0; padding: var(--space-4); }
 .button--icon svg { width: var(--size-icon); height: var(--size-icon); }
-.button:active { transform: scale(.84); }
+.button:active, .button.is-pressed { transform: scale(.84); transition-duration: 3000ms; }
 .button:disabled { opacity: .45; cursor: default; transform: none; }
 
 .avatar { flex: none; border-radius: 50%; object-fit: cover; }

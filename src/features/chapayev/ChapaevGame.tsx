@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import type { RealtimeChannel, User } from '@supabase/supabase-js';
 import { GameFooter } from '../../components/game/GameFooter';
 import { GameShell } from '../../components/game/GameShell';
 import { Button } from '../../components/ui/Button';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
-import { telegram } from '../../lib/telegram/client';
+import { ensureAnonymousUser, supabase } from '../../lib/supabase/client';
+import { telegram, telegramProfile } from '../../lib/telegram/client';
 import { playGameSound, preloadGameSounds } from '../../lib/game-sound';
 import { useNotice } from '../../hooks/use-notice';
 
@@ -15,6 +17,21 @@ type Piece = { id: string; side: Side; x: number; y: number; vx: number; vy: num
 type Geometry = { width: number; height: number; boardTop: number; boardSize: number; radius: number };
 type Drag = { pieceId: string; x: number; y: number };
 type Guide = { x: number; y: number; angle: number; length: number; thickness: number; power: number };
+type ChapaevRoom = {
+  id: string;
+  blue_player: string;
+  black_player: string | null;
+  blue_name: string | null;
+  black_name: string | null;
+  blue_avatar: string | null;
+  black_avatar: string | null;
+  pieces: Piece[];
+  ranks: Record<Side, number>;
+  turn: Side;
+  status: 'waiting' | 'active' | 'finished';
+  winner: Side | null;
+  updated_at?: string;
+};
 
 const sides: Side[] = ['blue', 'black'];
 const opponentOf = (side: Side): Side => side === 'blue' ? 'black' : 'blue';
@@ -44,7 +61,14 @@ function setUpPieces(geometry: Geometry, ranks: Record<Side, number>) {
   })));
 }
 
-export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
+function validRoom(value: unknown): value is ChapaevRoom {
+  if (!value || typeof value !== 'object') return false;
+  const room = value as Partial<ChapaevRoom>;
+  return typeof room.id === 'string' && Array.isArray(room.pieces) && typeof room.ranks === 'object'
+    && (room.turn === 'blue' || room.turn === 'black');
+}
+
+export function ChapaevGame({ initialRoomId, playerSide = 'blue' }: { initialRoomId?: string; playerSide?: Side }) {
   const [started, setStarted] = useState(true);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [geometry, setGeometry] = useState<Geometry>(emptyGeometry);
@@ -56,6 +80,8 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   const [isRotating, setIsRotating] = useState(false);
   const [impactTick, setImpactTick] = useState(0);
   const [releaseGuide, setReleaseGuide] = useState<Guide | null>(null);
+  const [room, setRoom] = useState<ChapaevRoom | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const arenaRef = useRef<HTMLDivElement>(null);
   const boardAreaRef = useRef<HTMLDivElement>(null);
   const piecesRef = useRef<Piece[]>([]);
@@ -71,11 +97,14 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   const roundTimerRef = useRef<number | null>(null);
   const rotationTimerRef = useRef<number | null>(null);
   const guideTimerRef = useRef<number | null>(null);
+  const roomRef = useRef<ChapaevRoom | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const frameRef = useRef<number | null>(null);
   const lastFrameRef = useRef(0);
   const notice = useNotice();
-  const botSide = opponentOf(playerSide);
-  const flipped = playerSide === 'black';
+  const mySide: Side = room?.blue_player === userId ? 'blue' : room?.black_player === userId ? 'black' : playerSide;
+  const botSide = opponentOf(mySide);
+  const flipped = mySide === 'black';
   const rotationTurns = ((boardRotation % 4) + 4) % 4;
 
   useEffect(() => { preloadGameSounds(['/sounds/ship-miss.wav']); }, []);
@@ -101,6 +130,99 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
     setTurnState(nextTurn);
     setMovingState(false);
     shotCountsRef.current = null;
+  };
+
+  const opponent = useMemo(() => {
+    if (!room) return { name: 'Соперник Робот' };
+    if (room.status === 'waiting') return { name: 'Ждём соперника' };
+    return mySide === 'blue'
+      ? { name: room.black_name || 'Игрок', avatar: room.black_avatar || undefined, multiplayer: true }
+      : { name: room.blue_name || 'Игрок', avatar: room.blue_avatar || undefined, multiplayer: true };
+  }, [mySide, room]);
+
+  const syncRoom = (next: ChapaevRoom, currentUserId: string) => {
+    const previous = roomRef.current;
+    if (previous?.updated_at && next.updated_at && Date.parse(next.updated_at) < Date.parse(previous.updated_at)) return;
+    roomRef.current = next;
+    setRoom(next);
+    ranksRef.current = next.ranks;
+    const world = geometryRef.current;
+    const size = world.boardSize || 1;
+    setPieceState(next.pieces.map((piece) => ({
+      ...piece,
+      x: piece.x * size,
+      y: world.boardTop + piece.y * size,
+      vx: piece.vx * size,
+      vy: piece.vy * size,
+    })));
+    setTurnState(next.turn);
+    winnerRef.current = next.winner;
+    setWinner(next.winner);
+    setStarted(next.status !== 'waiting');
+    setMovingState(false);
+  };
+
+  const subscribe = (id: string, currentUserId: string) => {
+    void channelRef.current?.unsubscribe();
+    channelRef.current = supabase
+      .channel(`chapayev-${id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chapayev_rooms', filter: `id=eq.${id}` }, ({ new: next }) => {
+        if (validRoom(next)) syncRoom(next, currentUserId);
+      })
+      .subscribe();
+  };
+
+  const connectRoom = async (id: string) => {
+    const user: User = await ensureAnonymousUser();
+    setUserId(user.id);
+    const profile = telegramProfile();
+    const { data, error } = await supabase.rpc('join_chapayev_room', {
+      room_id: id,
+      player_name: profile?.name ?? 'Игрок',
+      player_avatar: profile?.photoUrl ?? null,
+    });
+    if (error) throw error;
+    if (!validRoom(data)) throw new Error('Сервер вернул некорректное состояние игры');
+    subscribe(id, user.id);
+    syncRoom(data, user.id);
+  };
+
+  const connectToInitialRoom = useEffectEvent((id: string) => {
+    void connectRoom(id).catch((error) => notice.show(errorMessage(error, 'Не удалось открыть игру')));
+  });
+
+  useEffect(() => {
+    if (initialRoomId) {
+      const timer = window.setTimeout(() => connectToInitialRoom(initialRoomId), 0);
+      return () => { window.clearTimeout(timer); void channelRef.current?.unsubscribe(); };
+    }
+    return () => { void channelRef.current?.unsubscribe(); };
+  }, [initialRoomId]);
+
+  const saveMultiplayerState = async (nextPieces: Piece[], nextRanks: Record<Side, number>, nextTurn: Side, nextWinner: Side | null) => {
+    const activeRoom = roomRef.current;
+    if (!activeRoom || !userId) return;
+    const world = geometryRef.current;
+    const size = world.boardSize || 1;
+    const normalizedPieces = nextPieces.map((piece) => ({
+      ...piece,
+      x: piece.x / size,
+      y: (piece.y - world.boardTop) / size,
+      vx: piece.vx / size,
+      vy: piece.vy / size,
+    }));
+    const { data, error } = await supabase.rpc('make_chapayev_move', {
+      room_id: activeRoom.id,
+      next_pieces: normalizedPieces,
+      next_ranks: nextRanks,
+      next_turn: nextTurn,
+      next_winner: nextWinner,
+    });
+    if (error) {
+      notice.show('Ход не прошёл');
+      return;
+    }
+    if (validRoom(data)) syncRoom(data, userId);
   };
 
   useEffect(() => {
@@ -229,6 +351,11 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
         } else {
           setTurnState(enemyRemoved && strikerStayedOnBoard ? current : enemy);
         }
+        if (roomRef.current && current === mySide) {
+          window.setTimeout(() => {
+            void saveMultiplayerState(piecesRef.current, ranksRef.current, turnRef.current, winnerRef.current);
+          }, 800);
+        }
         changed = true;
       }
 
@@ -237,7 +364,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
     };
     frameRef.current = window.requestAnimationFrame(tick);
     return () => { if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current); };
-  }, [playerSide, started]);
+  }, [mySide, playerSide, room, started, userId]);
 
   const displayPoint = (x: number, y: number) => {
     const world = geometryRef.current;
@@ -280,6 +407,13 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   };
 
   const start = () => {
+    if (roomRef.current) {
+      void supabase.rpc('restart_chapayev_room', { room_id: roomRef.current.id }).then(({ data, error }) => {
+        if (error) return notice.show('Не удалось начать новую игру');
+        if (validRoom(data) && userId) syncRoom(data, userId);
+      });
+      return;
+    }
     winnerRef.current = null;
     setWinner(null);
     ranksRef.current = { blue: 7, black: 0 };
@@ -289,7 +423,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   };
 
   useEffect(() => {
-    if (!started || moving || winner || turn !== botSide) return;
+    if (room || !started || moving || winner || turn !== botSide) return;
     botTimerRef.current = window.setTimeout(() => {
       const candidates = piecesRef.current.filter((piece) => piece.side === botSide && !piece.eliminatedAt);
       const targets = piecesRef.current.filter((piece) => piece.side === playerSide && !piece.eliminatedAt);
@@ -310,7 +444,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
       telegram.impact('medium');
     }, 850);
     return () => { if (botTimerRef.current !== null) window.clearTimeout(botTimerRef.current); };
-  }, [botSide, moving, playerSide, started, turn, winner]);
+  }, [botSide, moving, room, playerSide, started, turn, winner]);
 
   useEffect(() => () => {
     if (botTimerRef.current !== null) window.clearTimeout(botTimerRef.current);
@@ -324,7 +458,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   }, []);
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!started || moving || winner || turn !== playerSide) return;
+    if (!started || moving || winner || room?.status === 'waiting' || turn !== mySide) return;
     const point = inputPoint(event);
     if (!point) return;
     const candidate = piecesRef.current.find((piece) => {
@@ -379,13 +513,29 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
     return { x: startPoint.x, y: startPoint.y, angle: Math.atan2(dy, dx) * 180 / Math.PI, length, thickness: Math.min(34, Math.max(8, length * .22)), power: length / 150 };
   }, [drag, flipped, geometry, pieces, rotationTurns]);
 
-  const status = winner ? (winner === playerSide ? 'Победа' : 'Поражение') : !started ? (playerSide === 'blue' ? 'Твой ход' : 'Ход соперника') : turn === playerSide ? 'Твой ход' : 'Ход соперника';
-  const statusMuted = winner ? winner === 'black' : !started ? playerSide === 'black' : turn === 'black';
+  const status = winner ? (winner === mySide ? 'Победа' : 'Поражение') : room?.status === 'waiting' ? '' : !started ? (mySide === 'blue' ? 'Твой ход' : 'Ход соперника') : turn === mySide ? 'Твой ход' : 'Ход соперника';
+  const statusMuted = winner ? winner === 'black' : !started ? mySide === 'black' : turn === 'black';
 
   const invite = async () => {
     try {
       telegram.impact('light');
-      const outcome = await shareGameInvite({ title: 'Чапаева', text: 'Сыграем в Чапаева?', startParam: 'chapayev' });
+      let activeRoom = roomRef.current;
+      if (!activeRoom) {
+        const user: User = await ensureAnonymousUser();
+        setUserId(user.id);
+        const profile = telegramProfile();
+        const { data, error } = await supabase.rpc('create_chapayev_room', {
+          player_name: profile?.name ?? 'Игрок',
+          player_avatar: profile?.photoUrl ?? null,
+        });
+        if (error) throw error;
+        if (!validRoom(data)) throw new Error('Сервер вернул некорректную игровую сессию');
+        activeRoom = data;
+        window.history.replaceState(null, '', `/games/chapayev?room=${encodeURIComponent(data.id)}`);
+        subscribe(data.id, user.id);
+        syncRoom(data, user.id);
+      }
+      const outcome = await shareGameInvite({ title: 'Чапаева', text: 'Сыграем в Чапаева?', startParam: `chapayev_${activeRoom.id}` });
       if (outcome === 'copied') notice.show('Ссылка-приглашение скопирована');
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) notice.show(errorMessage(error, 'Не удалось поделиться игрой'));
@@ -395,7 +545,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   return (
     <GameShell
       title="Чапаева"
-      opponent={{ name: 'Соперник Робот' }}
+      opponent={opponent}
       onInvite={invite}
       notice={notice.message}
       status={status}
