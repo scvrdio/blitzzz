@@ -6,7 +6,7 @@ import { gamePathFromStartParam, games } from '../../config/games';
 import { telegram } from '../../lib/telegram/client';
 import { useNotice } from '../../hooks/use-notice';
 import { useTelegramProfile } from '../../hooks/use-telegram-profile';
-import { AppHeader } from '../layout/AppHeader';
+import { GameHeader } from '../game/GameHeader';
 import { Notice } from '../ui/Notice';
 import { PlayerBadge } from '../ui/PlayerBadge';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -39,7 +39,7 @@ export function HomeScreen() {
 
   return (
     <main className="home-screen">
-      <AppHeader
+      <GameHeader
         className="home-header"
         title="Blitzzz"
         badge={<PlayerBadge name={profile?.name || 'Игрок'} avatar={profile?.photoUrl} />}

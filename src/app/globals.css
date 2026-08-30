@@ -31,7 +31,7 @@ a { color: inherit; }
 .player-badge:not(.player-badge--labeled):has(.avatar) { padding-left: var(--space-1); }
 
 .home-screen { width: min(100%, var(--container-width)); min-height: 100dvh; margin: auto; padding: max(calc(56px + var(--tg-content-safe-top)), calc((100dvh - 780px + var(--tg-content-safe-top) - var(--tg-content-safe-bottom)) / 2)) calc(var(--space-4) + var(--tg-content-safe-right)) calc(36px + var(--tg-content-safe-bottom)) calc(var(--space-4) + var(--tg-content-safe-left)); background: var(--color-background); }
-.home-header { margin-bottom: var(--space-6); padding-inline: var(--space-4); }
+.home-header { margin-bottom: var(--space-6); }
 .game-list { display: grid; gap: var(--space-2); }
 .game-card { position: relative; width: 100%; height: 112px; display: flex; align-items: stretch; gap: var(--space-4); overflow: hidden; padding: var(--space-4) 48px var(--space-4) var(--space-4); border: 0; border-radius: var(--radius-lg); background: var(--color-card); color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; transition: transform 1000ms var(--ease-standard); }
 .game-card:active { transform: scale(.85); }
