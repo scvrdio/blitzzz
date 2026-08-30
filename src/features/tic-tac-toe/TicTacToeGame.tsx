@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { GameFooter } from '../../components/game/GameFooter';
 import { GameShell } from '../../components/game/GameShell';
 import { useNotice } from '../../hooks/use-notice';
 import { useTimeoutRegistry } from '../../hooks/use-timeout-registry';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { telegram } from '../../lib/telegram/client';
+import { playGameSound, preloadGameSounds } from '../../lib/game-sound';
 
 type Mark = 'x' | 'o';
 type Cell = Mark | null;
@@ -55,6 +56,7 @@ export function TicTacToeGame() {
   const [robotThinking, setRobotThinking] = useState(false);
   const notice = useNotice();
   const timers = useTimeoutRegistry();
+  useEffect(() => { preloadGameSounds(['/sounds/tic-tac-toe-tap.wav']); }, []);
   const result = useMemo(() => resultFor(cells), [cells]);
   const winningLine = useMemo<readonly number[]>(() => winner(cells) ?? [], [cells]);
   const status = result === 'x' ? 'Победа' : result === 'o' ? 'Поражение' : result === 'draw' ? 'Ничья' : robotThinking ? 'Ход соперника' : 'Твой ход';
@@ -70,6 +72,7 @@ export function TicTacToeGame() {
     next[index] = 'x';
     const nextResult = resultFor(next);
     setCells(next);
+    playGameSound('/sounds/tic-tac-toe-tap.wav', .25);
     if (nextResult) return finishFeedback(nextResult);
     setRobotThinking(true);
     timers.schedule(() => {
@@ -78,6 +81,7 @@ export function TicTacToeGame() {
         if (robotIndex === undefined) return current;
         const afterRobot = [...current];
         afterRobot[robotIndex] = 'o';
+        playGameSound('/sounds/tic-tac-toe-tap.wav', .25);
         finishFeedback(resultFor(afterRobot));
         return afterRobot;
       });

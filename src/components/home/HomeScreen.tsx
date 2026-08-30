@@ -22,6 +22,15 @@ export function HomeScreen() {
     if (destination) router.replace(destination);
   }, [router]);
 
+  useEffect(() => {
+    const destinations = games.flatMap((game) => game.href ? [game.href] : []);
+    const prefetch = () => destinations.forEach((destination) => router.prefetch(destination));
+    const idle = window.requestIdleCallback?.(prefetch, { timeout: 1200 });
+    if (idle !== undefined) return () => window.cancelIdleCallback?.(idle);
+    const timer = window.setTimeout(prefetch, 350);
+    return () => window.clearTimeout(timer);
+  }, [router]);
+
   const showUnavailable = () => {
     telegram.impact('light');
     notice.show('Игра появится скоро');

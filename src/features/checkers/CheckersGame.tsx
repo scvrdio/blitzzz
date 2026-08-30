@@ -317,7 +317,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
           <div className="checkers-layout">
             <div className="checkers-columns checkers-columns--top">{displayedColumns.map((label) => <span key={label}>{label}</span>)}</div>
             <div className="checkers-rows checkers-rows--left">{displayedRows.map((label) => <span key={label}>{label}</span>)}</div>
-            <div className="checkerboard">
+            <div className="checkerboard" data-game-input>
               {screenIndices.map((index, screenIndex) => {
                 const piece = cells[index];
                 const isAvailable = available.some((move) => move.to === index);

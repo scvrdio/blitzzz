@@ -1,7 +1,7 @@
 const soundBytes = new Map<string, ArrayBuffer>();
 const soundBuffers = new Map<string, AudioBuffer>();
 const loadingSounds = new Map<string, Promise<void>>();
-const queuedSounds = new Set<string>();
+const queuedSounds = new Map<string, number>();
 const activeSources = new Set<AudioBufferSourceNode>();
 const MAX_ACTIVE_SOURCES = 4;
 let context: AudioContext | null = null;
@@ -16,14 +16,17 @@ function createAudioContext() {
   return context;
 }
 
-function startBuffer(path: string) {
+function startBuffer(path: string, volume = 1) {
   const current = context;
   const buffer = soundBuffers.get(path);
   if (!current || current.state !== 'running' || !buffer) return;
   if (activeSources.size >= MAX_ACTIVE_SOURCES) activeSources.values().next().value?.stop();
   const source = current.createBufferSource();
+  const gain = current.createGain();
   source.buffer = buffer;
-  source.connect(current.destination);
+  gain.gain.value = volume;
+  source.connect(gain);
+  gain.connect(current.destination);
   activeSources.add(source);
   source.onended = () => activeSources.delete(source);
   source.start();
@@ -34,13 +37,21 @@ async function decodeSound(path: string) {
   const bytes = soundBytes.get(path);
   if (!current || !bytes) return;
   if (soundBuffers.has(path)) {
-    if (queuedSounds.delete(path)) startBuffer(path);
+    const queuedVolume = queuedSounds.get(path);
+    if (queuedVolume !== undefined) {
+      queuedSounds.delete(path);
+      startBuffer(path, queuedVolume);
+    }
     return;
   }
   try {
     const buffer = await current.decodeAudioData(bytes.slice(0));
     soundBuffers.set(path, buffer);
-    if (queuedSounds.delete(path)) startBuffer(path);
+    const queuedVolume = queuedSounds.get(path);
+    if (queuedVolume !== undefined) {
+      queuedSounds.delete(path);
+      startBuffer(path, queuedVolume);
+    }
   } catch {
     queuedSounds.delete(path);
   }
@@ -69,10 +80,10 @@ function unlockAudio() {
   if (!current || current.state === 'running') return;
   void current.resume().then(() => {
     soundBytes.forEach((_, path) => { void decodeSound(path); });
-    queuedSounds.forEach((path) => {
+    queuedSounds.forEach((volume, path) => {
       if (soundBuffers.has(path)) {
         queuedSounds.delete(path);
-        startBuffer(path);
+        startBuffer(path, volume);
       }
     });
   }).catch(() => undefined);
@@ -90,13 +101,13 @@ export function preloadGameSounds(paths: readonly string[]) {
   paths.forEach((path) => { void fetchSound(path); });
 }
 
-export function playGameSound(path: string) {
+export function playGameSound(path: string, volume = 1) {
   unlockAudio();
   if (soundBuffers.has(path) && context?.state === 'running') {
-    startBuffer(path);
+    startBuffer(path, volume);
     return;
   }
-  queuedSounds.add(path);
+  queuedSounds.set(path, volume);
   void fetchSound(path);
   void decodeSound(path);
 }

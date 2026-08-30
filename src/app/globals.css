@@ -24,7 +24,7 @@ a { color: inherit; }
 .avatar--fallback { display: grid; place-items: center; background: var(--color-background); color: var(--color-muted); font: var(--weight-bold) 10px/1 var(--font-family-brand); }
 .badge, .player-badge { border-radius: var(--radius-round); white-space: nowrap; font-size: var(--font-size-xs); font-weight: var(--weight-semibold); }
 .badge { align-self: flex-start; display: inline-flex; align-items: center; height: 28px; padding: 0 var(--space-3); background: var(--color-background); }
-.player-badge { display: inline-flex; align-items: center; gap: var(--space-1); height: 28px; margin: 0; padding: 0 var(--space-3); background: var(--color-surface); color: var(--color-muted); }
+.player-badge { display: inline-flex; align-items: center; gap: var(--space-1); height: 28px; margin: 0; padding: 0 var(--space-3); background: transparent; color: var(--color-muted); }
 .player-badge:not(.player-badge--labeled):has(.avatar) { padding-left: var(--space-1); }
 
 .home-screen { width: min(100%, var(--container-width)); min-height: 100dvh; margin: auto; padding: max(calc(56px + var(--tg-content-safe-top)), calc((100dvh - 780px + var(--tg-content-safe-top) - var(--tg-content-safe-bottom)) / 2)) calc(var(--space-4) + var(--tg-content-safe-right)) calc(36px + var(--tg-content-safe-bottom)) calc(var(--space-4) + var(--tg-content-safe-left)); background: var(--color-background); }
@@ -32,6 +32,7 @@ a { color: inherit; }
 .game-list { display: grid; gap: var(--space-2); }
 .game-card { position: relative; width: 100%; height: 112px; display: flex; align-items: stretch; gap: var(--space-4); overflow: hidden; padding: var(--space-4) 48px var(--space-4) var(--space-4); border: 0; border-radius: var(--radius-lg); background: var(--color-card); color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; transition: transform var(--motion-normal) var(--ease-standard); }
 .game-card:active { transform: scale(.92); }
+.game-card.is-opening { transform: scale(.96); }
 .game-card--disabled { opacity: .5; }
 .game-card > .badge { position: absolute; top: var(--space-3); right: var(--space-3); }
 .game-card__copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: var(--space-2); }
@@ -71,6 +72,7 @@ a { color: inherit; }
 @keyframes game-outcome-loss-shake { 0%, 100% { transform: translateX(0); } 24% { transform: translateX(-4px); } 50% { transform: translateX(4px); } 74% { transform: translateX(-2px); } }
 .game-footer { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 100%; height: 116px; min-height: 116px; padding: var(--space-8) var(--space-4); animation: game-reveal 280ms 120ms cubic-bezier(.2, .8, .2, 1) both; }
 .game-footer__button { width: 141px; height: 52px; min-height: 52px; padding: var(--space-4); animation: game-result-action 300ms 80ms var(--ease-standard) both; white-space: nowrap; }
+.game-footer__button:active { animation: none; transform: scale(.84); }
 @keyframes game-result-action { from { opacity: 0; transform: translateY(8px) scale(.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .game-footer__tabbar { display: flex; align-items: flex-start; padding: 2px; border-radius: var(--radius-round); background: var(--color-primary-muted); }
 .game-footer__tab { position: relative; flex: none; overflow: hidden; border: 0; border-radius: var(--radius-xl); padding: 14px 20px; color: var(--color-primary); background: transparent; font: var(--weight-black) var(--font-size-md)/20px var(--font-family-brand); white-space: nowrap; cursor: pointer; }

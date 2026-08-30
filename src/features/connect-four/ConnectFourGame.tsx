@@ -10,6 +10,7 @@ import { classNames } from '../../lib/class-names';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { ensureAnonymousUser, supabase } from '../../lib/supabase/client';
 import { telegram, telegramProfile } from '../../lib/telegram/client';
+import { playGameSound, preloadGameSounds } from '../../lib/game-sound';
 import { availableColumns, boardChange, chooseRobotColumn, connectFourColumns, emptyConnectFourBoard, findWinningLine, firstOpenRow, placeChip, type BoardPosition, type Chip, type ConnectFourBoard } from './engine';
 
 type ConnectFourRoom = {
@@ -65,6 +66,8 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const pendingMoveRef = useRef<{ row: number; column: number; chip: Chip } | null>(null);
   const remoteQueueRef = useRef(Promise.resolve());
   const robotTurnRef = useRef(0);
+
+  useEffect(() => { preloadGameSounds(['/sounds/connect-four-land.wav']); }, []);
 
   const myChip: Chip = room?.blue_player === userId ? 'blue' : room?.black_player === userId ? 'black' : 'blue';
   const opponent = useMemo(() => {
@@ -182,6 +185,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     animationsRef.current.add(animation);
     await animation.finished.catch(() => undefined);
     animationsRef.current.delete(animation);
+    playGameSound('/sounds/connect-four-land.wav', .25);
   };
 
   const finish = (nextWinner: Chip | 'draw', line: BoardPosition[] = []) => {

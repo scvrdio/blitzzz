@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import { TelegramBoot } from '../components/telegram/TelegramBoot';
 import { TelegramAuthProvider } from '../components/telegram/TelegramAuthProvider';
+import { GlobalButtonSound } from '../components/ui/GlobalButtonSound';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <Script id="telegram-initial-layout" strategy="beforeInteractive">{initialTelegramLayout}</Script>
         <TelegramBoot />
+        <GlobalButtonSound />
         <TelegramAuthProvider>{children}</TelegramAuthProvider>
       </body>
     </html>

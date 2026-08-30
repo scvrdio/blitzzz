@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
 import { classNames } from '../../lib/class-names';
+import { playGameSound, preloadGameSounds } from '../../lib/game-sound';
 import { isShipSunk, seaBattleSize, shipAt, type Ship, type ShotBoard } from './engine';
 
 const columns = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К'];
@@ -51,13 +52,26 @@ function shipPosition(cells: readonly number[]): { style: CSSProperties; horizon
 export function BattleGrid({ ships, shots, revealShips, interactive = false, draftCells = [], draftValid = false, showRemoveHints = false, onCellClick, onDragStart, onDragMove, onDragEnd }: BattleGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   const sunkRef = useRef<Set<string> | null>(null);
+  const shotsRef = useRef<Readonly<ShotBoard> | null>(null);
   const [sunkTick, setSunkTick] = useState(0);
+
+  useEffect(() => { preloadGameSounds(['/sounds/ship-sunk.wav', '/sounds/ship-hit.wav', '/sounds/ship-miss.wav']); }, []);
+
+  useEffect(() => {
+    const previous = shotsRef.current;
+    const newShot = previous ? shots.find((shot, index) => Boolean(shot) && !previous[index]) : null;
+    shotsRef.current = shots;
+    if (newShot === 'hit') playGameSound('/sounds/ship-hit.wav');
+    if (newShot === 'miss') playGameSound('/sounds/ship-miss.wav');
+  }, [shots]);
 
   useEffect(() => {
     const sunk = new Set(ships.filter((ship) => isShipSunk(ship, shots)).map((ship) => ship.id));
-    const animationFrame = sunkRef.current && [...sunk].some((id) => !sunkRef.current?.has(id))
+    const justSank = Boolean(sunkRef.current && [...sunk].some((id) => !sunkRef.current?.has(id)));
+    const animationFrame = justSank
       ? window.requestAnimationFrame(() => setSunkTick((tick) => tick + 1))
       : null;
+    if (justSank) playGameSound('/sounds/ship-sunk.wav');
     sunkRef.current = sunk;
     return () => { if (animationFrame !== null) window.cancelAnimationFrame(animationFrame); };
   }, [ships, shots]);
