@@ -9,6 +9,7 @@ import { useTelegramProfile } from '../../hooks/use-telegram-profile';
 import { AppHeader } from '../layout/AppHeader';
 import { Notice } from '../ui/Notice';
 import { PlayerBadge } from '../ui/PlayerBadge';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { GameCard } from './GameCard';
 
 export function HomeScreen() {
@@ -42,6 +43,7 @@ export function HomeScreen() {
         className="home-header"
         title="Blitzzz"
         badge={<PlayerBadge name={profile?.name || 'Игрок'} avatar={profile?.photoUrl} />}
+        leading={<ThemeToggle />}
       />
       <section className="game-list" aria-label="Игры">
         {games.map((game) => <GameCard key={game.id} game={game} onUnavailable={showUnavailable} />)}

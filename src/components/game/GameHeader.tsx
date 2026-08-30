@@ -1,7 +1,5 @@
 'use client';
 
-/* Exact vectors exported from the shared Figma header. */
-/* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 import { AppHeader } from '../layout/AppHeader';
 import { Button } from '../ui/Button';
@@ -25,8 +23,8 @@ export function GameHeader({ title, opponent = { name: 'Соперник Роб�
       leading={<Button className="game-header__invite" variant="surface" size="icon" aria-label="Пригласить друга" onClick={() => void onInvite()}>
         <img src="/icons/header-invite.svg" width="16" height="16" alt="" />
       </Button>}
-      trailing={<Link className="game-header__exit" href="/" aria-label="Вернуться на главную" onClick={() => telegram.impact('light')}>
-        <img src="/icons/header-close.svg" width="44" height="44" alt="" />
+      trailing={<Link className="game-header__exit button button--surface button--icon" href="/" aria-label="Вернуться на главную" onClick={() => telegram.impact('light')}>
+        <img src="/icons/header-close-theme.svg" width="16" height="16" alt="" />
       </Link>}
     />
   );

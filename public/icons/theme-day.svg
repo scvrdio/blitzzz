@@ -1,0 +1,15 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="day">
+<g id="Vector">
+<path d="M10 8C10 9.10457 9.10457 10 8 10C6.89543 10 6 9.10457 6 8C6 6.89543 6.89543 6 8 6C9.10457 6 10 6.89543 10 8Z" fill="black"/>
+<path d="M8.75 1V4H7.25V1H8.75Z" fill="black"/>
+<path d="M13.4801 3.58058L11.3588 5.7019L10.2981 4.64124L12.4194 2.51992L13.4801 3.58058Z" fill="black"/>
+<path d="M15 8.75L12 8.75V7.25L15 7.25V8.75Z" fill="black"/>
+<path d="M12.4194 13.4801L10.2981 11.3588L11.3588 10.2981L13.4801 12.4194L12.4194 13.4801Z" fill="black"/>
+<path d="M7.25 15V12H8.75V15H7.25Z" fill="black"/>
+<path d="M2.51992 12.4194L4.64124 10.2981L5.7019 11.3588L3.58058 13.4801L2.51992 12.4194Z" fill="black"/>
+<path d="M1 7.25H4V8.75H1L1 7.25Z" fill="black"/>
+<path d="M3.58058 2.51992L5.7019 4.64124L4.64124 5.7019L2.51992 3.58058L3.58058 2.51992Z" fill="black"/>
+</g>
+</g>
+</svg>

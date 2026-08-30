@@ -116,7 +116,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
         return `M ${x - radius} ${y} a ${radius} ${radius} 0 1 0 ${radius * 2} 0 a ${radius} ${radius} 0 1 0 -${radius * 2} 0`;
       }).join(' ');
       path.setAttribute('d', `M 0 0 H ${sheetRect.width} V ${sheetRect.height} H 0 Z ${holePaths}`);
-      path.setAttribute('fill', '#ececec');
+      path.setAttribute('fill', getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim());
       path.setAttribute('fill-rule', 'evenodd');
       svg.append(path);
       body.replaceChildren(svg);
@@ -125,7 +125,11 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     rebuildFace();
     const observer = new ResizeObserver(rebuildFace);
     observer.observe(boardElement);
-    return () => observer.disconnect();
+    window.addEventListener('blitzzz-theme-change', rebuildFace);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('blitzzz-theme-change', rebuildFace);
+    };
   }, []);
 
   useLayoutEffect(() => {

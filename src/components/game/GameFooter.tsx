@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import type { ReactNode } from 'react';
 import { classNames } from '../../lib/class-names';
 import { Button } from '../ui/Button';
@@ -122,13 +121,7 @@ export function GameFooter(props: GameFooterProps) {
           const selected = value === props.value;
           return (
             <span key={value} className="game-footer__slider-step">
-              <Image
-                src={selected ? '/icons/footer-thumb.svg' : '/icons/footer-dot.svg'}
-                alt=""
-                width={selected ? 24 : 4}
-                height={selected ? 24 : 4}
-                unoptimized
-              />
+              <i className={classNames('game-footer__slider-dot', selected && 'is-selected')} />
             </span>
           );
         })}

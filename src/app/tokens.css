@@ -16,6 +16,9 @@
   --color-destructive: #c62828;
   --color-overlay: rgba(255, 255, 255, 0.56);
   --color-control-dot: #e3e3e3;
+  --color-sunk: #eed4d4;
+  --color-sunk-hit: #ff0000;
+  --color-on-primary: #ffffff;
 
   --font-family-brand: 'Merriweather', Georgia, serif;
   --font-size-xs: 12px;
@@ -63,4 +66,27 @@
   --tg-content-safe-bottom: 0px;
   --tg-content-safe-left: 0px;
   --tg-content-safe-right: 0px;
+}
+
+:root[data-theme='dark'] {
+  --color-background: #111111;
+  --color-surface: #262626;
+  --color-surface-subtle: #1d1d1d;
+  --color-card: #202020;
+  --color-foreground: #f8f8f8;
+  --color-muted: rgba(255, 255, 255, 0.5);
+  --color-border: #5d5d5d;
+  --color-primary: #ff9900;
+  --color-primary-muted: #5a3b0a;
+  --color-primary-soft: rgba(255, 153, 0, 0.32);
+  --color-primary-trail: rgba(255, 153, 0, 0.3);
+  --color-foreground-trail: rgba(248, 248, 248, 0.3);
+  --color-success: #4fc27d;
+  --color-warning: #ffbf4d;
+  --color-destructive: #ff6b6b;
+  --color-overlay: rgba(17, 17, 17, 0.72);
+  --color-control-dot: #494949;
+  --color-sunk: #5b3030;
+  --color-sunk-hit: #ff6b6b;
+  --color-on-primary: #ffffff;
 }
