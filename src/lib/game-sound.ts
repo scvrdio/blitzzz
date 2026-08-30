@@ -3,7 +3,7 @@ const soundBuffers = new Map<string, AudioBuffer>();
 const loadingSounds = new Map<string, Promise<void>>();
 const queuedSounds = new Set<string>();
 const activeSources = new Set<AudioBufferSourceNode>();
-const MAX_ACTIVE_SOURCES = 8;
+const MAX_ACTIVE_SOURCES = 4;
 let context: AudioContext | null = null;
 let unlockListenerInstalled = false;
 
