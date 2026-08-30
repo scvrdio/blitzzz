@@ -8,7 +8,7 @@ import { classNames } from '../../lib/class-names';
 import { ensureAnonymousUser, supabase } from '../../lib/supabase/client';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { telegram, telegramProfile } from '../../lib/telegram/client';
-import { playGameSound } from '../../lib/game-sound';
+import { playGameSound, preloadGameSounds } from '../../lib/game-sound';
 import { useNotice } from '../../hooks/use-notice';
 import { useTimeoutRegistry } from '../../hooks/use-timeout-registry';
 import { applyCheckerMove, checkerColor, chooseBotMove, completeCheckerTurn, findCheckerTurnSequence, initialCheckersBoard, isKing, legalMoves, pieceMoves, type CheckerCell, type CheckerColor } from './engine';
@@ -58,6 +58,8 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
   const roomRef = useRef<CheckersRoom | null>(null);
   const mountedRef = useRef(true);
   const remoteQueueRef = useRef(Promise.resolve());
+
+  useEffect(() => { preloadGameSounds(['/sounds/checkers-tap.wav']); }, []);
 
   const myColor: CheckerColor = room?.blue_player === userId ? 'blue' : room?.black_player === userId ? 'black' : 'blue';
   const flipped = Boolean(room && myColor === 'black');
@@ -128,7 +130,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
       displayedBoard = applyCheckerMove(displayedBoard, move, false);
       setMovingPiece(move.to);
       setCells([...displayedBoard]);
-      playGameSound('/sounds/tap-eq303.wav');
+      playGameSound('/sounds/checkers-tap.wav');
       await pause(180);
       if (move.capture !== null) {
         displayedBoard[move.capture] = null;
@@ -194,7 +196,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
       const nextCaptured = move.capture === null ? captured : [...captured, move.capture];
       const nextStep = applyCheckerMove(board, move, false);
       setCells(nextStep);
-      playGameSound('/sounds/tap-eq303.wav');
+      playGameSound('/sounds/checkers-tap.wav');
       if (move.capture !== null) telegram.impact('medium');
       const follow = move.capture === null ? [] : pieceMoves(move.to, true, nextStep, nextCaptured);
       if (follow.length) return runBotMove(nextStep, move.to, 240, nextCaptured);
@@ -233,7 +235,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
     const nextCaptured = move.capture === null ? capturedThisTurn : [...capturedThisTurn, move.capture];
     const nextStep = applyCheckerMove(cells, move, false);
     setStarted(true);
-    playGameSound('/sounds/tap-eq303.wav');
+    playGameSound('/sounds/checkers-tap.wav');
     telegram.impact(move.capture === null ? 'light' : 'medium');
     const follow = move.capture === null ? [] : pieceMoves(move.to, true, nextStep, nextCaptured);
     if (follow.length) {

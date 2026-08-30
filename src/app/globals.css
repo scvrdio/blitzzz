@@ -196,12 +196,15 @@ a { color: inherit; }
 @keyframes chapaev-board-impact-b { 0%, 100% { transform: translateX(0); } 35% { transform: translateX(-3px); } 70% { transform: translateX(2px); } }
 .chapaev-rotating-layer { position: relative; flex: none; width: 100%; aspect-ratio: 1; transition: transform 400ms var(--ease-standard); pointer-events: none; }
 .chapaev-board { position: absolute; left: 0; overflow: hidden; border-radius: 24px; corner-shape: superellipse(1.2); background-color: var(--color-surface); background-image: linear-gradient(var(--color-background) 1px, transparent 1px), linear-gradient(90deg, var(--color-background) 1px, transparent 1px); background-size: 12.5% 12.5%; pointer-events: none; }
-.chapaev-piece { position: absolute; z-index: 2; display: block; border-radius: 50%; transform: translate(-50%, -50%); }
+.chapaev-piece { position: absolute; z-index: 2; display: block; border-radius: 50%; transform: translate(-50%, -50%); transition: transform 130ms var(--ease-standard), filter 130ms ease; }
+.chapaev-piece.is-aiming { transform: translate(-50%, -50%) scale(1.08); filter: brightness(1.08); }
 .chapaev-piece--blue { background: var(--color-primary); }
 .chapaev-piece--black { background: var(--color-foreground); }
 .chapaev-piece.is-eliminated { z-index: 1; animation: chapaev-piece-dismiss 2s linear forwards; }
 @keyframes chapaev-piece-dismiss { 0% { transform: translate(-50%, -50%) scale(1); } 15%, 100% { transform: translate(-50%, -50%) scale(0); } }
-.chapaev-guide { position: absolute; z-index: 3; display: block; transform-origin: 0 50%; clip-path: polygon(0 0, 0 100%, 100% calc(50% + 2px), 100% calc(50% - 2px)); background: linear-gradient(90deg, var(--color-primary-trail), var(--color-primary)); pointer-events: none; }
+.chapaev-guide { position: absolute; z-index: 3; display: block; transform: rotate(var(--guide-angle)); transform-origin: 0 50%; clip-path: polygon(0 0, 0 100%, 100% calc(50% + 2px), 100% calc(50% - 2px)); background: linear-gradient(90deg, var(--color-primary-trail), var(--color-primary)); pointer-events: none; }
+.chapaev-guide--release { animation: chapaev-guide-release 180ms cubic-bezier(.15, .75, .2, 1) forwards; }
+@keyframes chapaev-guide-release { from { opacity: .92; transform: rotate(var(--guide-angle)) scaleX(1); } to { opacity: 0; transform: rotate(var(--guide-angle)) scaleX(.08); } }
 .chapaev-footer__rotate { height: 56px; min-height: 56px; gap: var(--space-2); padding: 0 var(--space-6); }
 .chapaev-footer__rotate img { display: block; width: 20px; height: 20px; }
 .connect-sheet { --connect-cell-gap: var(--space-2); --connect-cell-size: calc((100% - 48px) * .142857); position: relative; width: 100%; padding: var(--space-4); border-radius: var(--radius-xl); background: var(--color-surface); animation: game-board-reveal 220ms var(--ease-standard) both; }

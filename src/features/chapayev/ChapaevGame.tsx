@@ -7,13 +7,14 @@ import { GameShell } from '../../components/game/GameShell';
 import { Button } from '../../components/ui/Button';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { telegram } from '../../lib/telegram/client';
-import { playGameSound } from '../../lib/game-sound';
+import { playGameSound, preloadGameSounds } from '../../lib/game-sound';
 import { useNotice } from '../../hooks/use-notice';
 
 type Side = 'blue' | 'black';
 type Piece = { id: string; side: Side; x: number; y: number; vx: number; vy: number; eliminatedAt?: number };
 type Geometry = { width: number; height: number; boardTop: number; boardSize: number; radius: number };
 type Drag = { pieceId: string; x: number; y: number };
+type Guide = { x: number; y: number; angle: number; length: number; thickness: number; power: number };
 
 const sides: Side[] = ['blue', 'black'];
 const opponentOf = (side: Side): Side => side === 'blue' ? 'black' : 'blue';
@@ -54,6 +55,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   const [boardRotation, setBoardRotation] = useState(0);
   const [isRotating, setIsRotating] = useState(false);
   const [impactTick, setImpactTick] = useState(0);
+  const [releaseGuide, setReleaseGuide] = useState<Guide | null>(null);
   const arenaRef = useRef<HTMLDivElement>(null);
   const boardAreaRef = useRef<HTMLDivElement>(null);
   const piecesRef = useRef<Piece[]>([]);
@@ -68,12 +70,15 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
   const botTimerRef = useRef<number | null>(null);
   const roundTimerRef = useRef<number | null>(null);
   const rotationTimerRef = useRef<number | null>(null);
+  const guideTimerRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
   const lastFrameRef = useRef(0);
   const notice = useNotice();
   const botSide = opponentOf(playerSide);
   const flipped = playerSide === 'black';
   const rotationTurns = ((boardRotation % 4) + 4) % 4;
+
+  useEffect(() => { preloadGameSounds(['/sounds/checkers-tap.wav']); }, []);
 
   const setPieceState = (next: Piece[]) => {
     piecesRef.current = next;
@@ -269,7 +274,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
     };
     strikerIdRef.current = pieceId;
     setMovingState(true);
-    playGameSound('/sounds/tap-eq303.wav');
+    playGameSound('/sounds/checkers-tap.wav');
     telegram.impact(power > 140 ? 'heavy' : 'medium');
   };
 
@@ -349,7 +354,14 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
     if (dragRef.current) event.preventDefault();
     const activeDrag = dragRef.current;
     const point = inputPoint(event);
-    if (activeDrag && point) launch(activeDrag.pieceId, point);
+    if (activeDrag && point) {
+      if (guide) {
+        if (guideTimerRef.current !== null) window.clearTimeout(guideTimerRef.current);
+        setReleaseGuide(guide);
+        guideTimerRef.current = window.setTimeout(() => setReleaseGuide(null), 180);
+      }
+      launch(activeDrag.pieceId, point);
+    }
     dragRef.current = null;
     setDrag(null);
   };
@@ -363,7 +375,7 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
     const dx = pointer.x - startPoint.x;
     const dy = pointer.y - startPoint.y;
     const length = Math.min(Math.hypot(dx, dy), 150);
-    return { x: startPoint.x, y: startPoint.y, angle: Math.atan2(dy, dx) * 180 / Math.PI, length, thickness: Math.min(34, Math.max(8, length * .22)) };
+    return { x: startPoint.x, y: startPoint.y, angle: Math.atan2(dy, dx) * 180 / Math.PI, length, thickness: Math.min(34, Math.max(8, length * .22)), power: length / 150 };
   }, [drag, flipped, geometry, pieces, rotationTurns]);
 
   const status = winner ? (winner === playerSide ? 'Победа' : 'Поражение') : !started ? (playerSide === 'blue' ? 'Твой ход' : 'Ход соперника') : turn === playerSide ? 'Твой ход' : 'Ход соперника';
@@ -399,10 +411,11 @@ export function ChapaevGame({ playerSide = 'blue' }: { playerSide?: Side }) {
         >
           <div ref={boardAreaRef} className="chapaev-rotating-layer" style={{ transform: `rotate(${boardRotation * 90}deg) scale(${isRotating ? .75 : 1})`, transformOrigin: `${geometry.boardSize / 2}px ${geometry.boardTop + geometry.boardSize / 2}px` }}>
             <div className="chapaev-board" style={{ top: geometry.boardTop, width: geometry.boardSize, height: geometry.boardSize }} />
-            {guide ? <span className="chapaev-guide" style={{ left: guide.x, top: guide.y - guide.thickness / 2, width: guide.length, height: guide.thickness, transform: `rotate(${guide.angle}deg)` }} /> : null}
+            {guide ? <span className="chapaev-guide" style={{ left: guide.x, top: guide.y - guide.thickness / 2, width: guide.length, height: guide.thickness, opacity: .42 + guide.power * .5, '--guide-angle': `${guide.angle}deg` } as React.CSSProperties} /> : null}
+            {releaseGuide ? <span className="chapaev-guide chapaev-guide--release" style={{ left: releaseGuide.x, top: releaseGuide.y - releaseGuide.thickness / 2, width: releaseGuide.length, height: releaseGuide.thickness, '--guide-angle': `${releaseGuide.angle}deg` } as React.CSSProperties} /> : null}
             {pieces.map((piece) => {
               const point = displayPointFor(geometry, flipped, piece.x, piece.y);
-              return <span key={piece.id} className={`chapaev-piece chapaev-piece--${piece.side}${piece.eliminatedAt ? ' is-eliminated' : ''}`} style={{ left: point.x, top: point.y, width: geometry.radius * 2, height: geometry.radius * 2 }} aria-hidden="true" />;
+              return <span key={piece.id} className={`chapaev-piece chapaev-piece--${piece.side}${piece.id === drag?.pieceId ? ' is-aiming' : ''}${piece.eliminatedAt ? ' is-eliminated' : ''}`} style={{ left: point.x, top: point.y, width: geometry.radius * 2, height: geometry.radius * 2 }} aria-hidden="true" />;
             })}
           </div>
         </div>
