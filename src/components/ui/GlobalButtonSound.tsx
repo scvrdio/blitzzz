@@ -14,7 +14,7 @@ export function GlobalButtonSound() {
       if (!(target instanceof Element)) return;
       const control = target.closest('button:not(:disabled), a');
       if (!control || control.closest(gameInputSelector)) return;
-      playGameSound(soundPath, .35);
+      playGameSound(soundPath, 1.05);
     };
     document.addEventListener('click', onClick, { capture: true });
     return () => document.removeEventListener('click', onClick, { capture: true });
