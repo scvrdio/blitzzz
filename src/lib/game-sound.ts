@@ -4,6 +4,7 @@ const loadingSounds = new Map<string, Promise<void>>();
 const queuedSounds = new Map<string, number>();
 const activeSources = new Set<AudioBufferSourceNode>();
 const MAX_ACTIVE_SOURCES = 4;
+const MASTER_VOLUME = 4;
 let context: AudioContext | null = null;
 let unlockListenerInstalled = false;
 
@@ -24,7 +25,7 @@ function startBuffer(path: string, volume = 1) {
   const source = current.createBufferSource();
   const gain = current.createGain();
   source.buffer = buffer;
-  gain.gain.value = volume;
+  gain.gain.value = volume * MASTER_VOLUME;
   source.connect(gain);
   gain.connect(current.destination);
   activeSources.add(source);
