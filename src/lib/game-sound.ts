@@ -66,7 +66,7 @@ async function fetchSound(path: string) {
 
 function unlockAudio() {
   const current = createAudioContext();
-  if (!current) return;
+  if (!current || current.state === 'running') return;
   void current.resume().then(() => {
     soundBytes.forEach((_, path) => { void decodeSound(path); });
     queuedSounds.forEach((path) => {
