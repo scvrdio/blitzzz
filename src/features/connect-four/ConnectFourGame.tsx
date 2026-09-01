@@ -66,8 +66,11 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const pendingMoveRef = useRef<{ row: number; column: number; chip: Chip } | null>(null);
   const remoteQueueRef = useRef(Promise.resolve());
   const robotTurnRef = useRef(0);
+  const boardPointerRef = useRef<{ id: number; column: number } | null>(null);
+  const suppressColumnClickRef = useRef(false);
 
   useEffect(() => { preloadGameSounds(['/sounds/connect-four-land.wav']); }, []);
+  useEffect(() => () => telegram.setVerticalSwipes(false), []);
 
   const myChip: Chip = room?.blue_player === userId ? 'blue' : room?.black_player === userId ? 'black' : 'blue';
   const opponent = useMemo(() => {
@@ -298,6 +301,51 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     }
   };
 
+  const columnAtPointer = (clientX: number) => {
+    const rect = boardWrapRef.current?.getBoundingClientRect();
+    if (!rect) return selected;
+    return Math.max(0, Math.min(connectFourColumns - 1, Math.floor(((clientX - rect.left) / rect.width) * connectFourColumns)));
+  };
+
+  const selectColumnFromPointer = (column: number) => {
+    if (column === boardPointerRef.current?.column) return;
+    boardPointerRef.current = boardPointerRef.current ? { ...boardPointerRef.current, column } : null;
+    setSelected(column);
+    telegram.selectionChanged();
+    publishPreview(column);
+  };
+
+  const beginBoardDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (locked || winner) return;
+    const column = columnAtPointer(event.clientX);
+    boardPointerRef.current = { id: event.pointerId, column };
+    suppressColumnClickRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    telegram.setVerticalSwipes(true);
+    setSelected(column);
+    publishPreview(column);
+  };
+
+  const moveBoardDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = boardPointerRef.current;
+    if (!drag || drag.id !== event.pointerId) return;
+    event.preventDefault();
+    selectColumnFromPointer(columnAtPointer(event.clientX));
+  };
+
+  const endBoardDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = boardPointerRef.current;
+    if (!drag || drag.id !== event.pointerId) return;
+    boardPointerRef.current = null;
+    telegram.setVerticalSwipes(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (event.type === 'pointercancel') return;
+    event.preventDefault();
+    suppressColumnClickRef.current = true;
+    void play(drag.column);
+  };
+
   const runRobot = (current: ConnectFourBoard) => {
     const turn = ++robotTurnRef.current;
     const start = firstOpenRow(current, 3) >= 0 ? 3 : availableColumns(current)[0] ?? 3;
@@ -432,7 +480,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
           <div className="connect-hole-layer" ref={holeLayerRef} aria-hidden="true" />
           {!dropping && !winner && firstOpenRow(board, previewColumn ?? 3) >= 0 && <span ref={previewRef} className={`connect-preview connect-preview--${previewChip}`} aria-hidden="true" />}
           <div className="connect-body-layer" ref={bodyLayerRef} aria-hidden="true" />
-          <div className="connect-board-wrap" ref={boardWrapRef}>
+          <div className="connect-board-wrap" ref={boardWrapRef} data-game-input onPointerDown={beginBoardDrag} onPointerMove={moveBoardDrag} onPointerUp={endBoardDrag} onPointerCancel={endBoardDrag}>
             <div className="connect-board" ref={boardElementRef} aria-hidden="true">
               {board.flatMap((row, rowIndex) => row.map((chip, column) => {
                 const isHint = !locked && !chip && rowIndex === firstOpenRow(board, column) && column === selected;
@@ -441,7 +489,13 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
               }))}
             </div>
             <div className="connect-column-buttons">
-              {Array.from({ length: connectFourColumns }, (_, column) => <button key={column} type="button" aria-label={`Положить фишку в столбец ${column + 1}`} disabled={locked || firstOpenRow(board, column) < 0} onClick={() => void play(column)} />)}
+              {Array.from({ length: connectFourColumns }, (_, column) => <button key={column} type="button" aria-label={`Положить фишку в столбец ${column + 1}`} disabled={locked || firstOpenRow(board, column) < 0} onClick={() => {
+                if (suppressColumnClickRef.current) {
+                  suppressColumnClickRef.current = false;
+                  return;
+                }
+                void play(column);
+              }} />)}
             </div>
           </div>
         </section>

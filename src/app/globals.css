@@ -252,7 +252,7 @@ a { color: inherit; }
 .chapaev-footer__rotate { height: 56px; min-height: 56px; gap: var(--space-2); padding: 0 var(--space-6); }
 .chapaev-footer__rotate img { display: block; width: 20px; height: 20px; }
 .connect-sheet { --connect-cell-gap: var(--space-2); --connect-cell-size: calc((100% - 48px) * .142857); position: relative; width: 100%; padding: var(--space-4); border-radius: var(--radius-xl); background: var(--color-surface); animation: game-board-reveal 220ms var(--ease-standard) both; }
-.connect-board-wrap { position: relative; }
+.connect-board-wrap { position: relative; touch-action: none; overscroll-behavior: contain; -webkit-user-select: none; user-select: none; }
 .connect-hole-layer, .connect-body-layer { position: absolute; inset: 0; pointer-events: none; }
 .connect-hole-layer { z-index: 0; }
 .connect-hole { position: absolute; border-radius: 50%; background: var(--color-background); }
