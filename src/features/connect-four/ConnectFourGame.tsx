@@ -80,9 +80,20 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       ? { name: room.black_name || 'Игрок', avatar: room.black_avatar || undefined, multiplayer: true }
       : { name: room.blue_name || 'Игрок', avatar: room.blue_avatar || undefined, multiplayer: true };
   }, [myChip, room]);
-  const remotePreview = room?.status === 'active' && room.turn !== myChip && room.preview_player && room.preview_player !== userId && Number.isInteger(room.preview_column) ? room.preview_column : null;
-  const previewColumn = remotePreview ?? selected;
-  const previewChip: Chip = room?.status === 'active' ? room.turn : room ? myChip : localTurn;
+  const availablePreviewColumns = availableColumns(board);
+  const closestOpenColumn = (preferred: number) => availablePreviewColumns.reduce<number | null>((best, column) => {
+    if (best === null || Math.abs(column - preferred) < Math.abs(best - preferred)) return column;
+    return best;
+  }, null);
+  const isRemoteTurn = room?.status === 'active' && room.turn !== myChip;
+  const remotePreview = isRemoteTurn && Number.isInteger(room?.preview_column) ? room.preview_column : null;
+  // A turn switch and a remote preview update can arrive in separate realtime events.
+  // Never reuse the local column in between them: it may already be full and makes the
+  // opponent's chip disappear for a frame.
+  const previewColumn = isRemoteTurn
+    ? (remotePreview !== null && firstOpenRow(board, remotePreview) >= 0 ? remotePreview : closestOpenColumn(3))
+    : selected;
+  const previewChip: Chip = isRemoteTurn ? room!.turn : room?.status === 'active' ? myChip : localTurn;
   const statusChip: Chip | 'draw' = winner ?? (room?.status === 'active' ? room.turn : localTurn);
 
   useEffect(() => { boardRef.current = board; }, [board]);
@@ -135,21 +146,21 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     };
   }, []);
 
-  useLayoutEffect(() => {
+  const settleDrop = () => {
     const falling = fallingRef.current;
     if (!falling) return;
     fallingRef.current = null;
     falling.remove();
     setDropping(false);
     telegram.impact('medium');
-  }, [board]);
+  };
 
   useLayoutEffect(() => {
     const preview = previewRef.current;
     const boardElement = boardElementRef.current;
     const sheet = sheetRef.current;
-    const column = previewColumn ?? 3;
-    if (!preview || !boardElement || !sheet || winner || firstOpenRow(board, column) < 0) return;
+    const column = previewColumn;
+    if (!preview || !boardElement || !sheet || winner || column === null || firstOpenRow(board, column) < 0) return;
     const target = boardElement.children[column] as HTMLElement | undefined;
     const targetRow = firstOpenRow(board, column);
     const landingCell = boardElement.children[targetRow * connectFourColumns + column] as HTMLElement | undefined;
@@ -232,11 +243,13 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     const change = boardChange(boardRef.current, next.board);
     const pending = pendingMoveRef.current;
     if (change && pending && pending.row === change.row && pending.column === change.column && pending.chip === change.chip) return;
-    if (change && (!pending || pending.row !== change.row || pending.column !== change.column || pending.chip !== change.chip)) {
+    const shouldAnimate = Boolean(change && (!pending || pending.row !== change.row || pending.column !== change.column || pending.chip !== change.chip));
+    if (shouldAnimate && change) {
       setLocked(true);
       await animateDrop(change.column, change.row, change.chip);
     }
     applyRoom(next, currentUserId);
+    if (shouldAnimate) settleDrop();
   };
 
   const subscribe = (id: string, currentUserId: string) => {
@@ -374,12 +387,13 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
         if (!mountedRef.current || robotTurnRef.current !== turn) return;
         setBoard(placed.board);
         const line = findWinningLine(placed.board, placed.row, column, 'black');
-        if (line) return finish('black', line);
-        if (placed.board.flat().every(Boolean)) return finish('draw');
+        if (line) { settleDrop(); return finish('black', line); }
+        if (placed.board.flat().every(Boolean)) { settleDrop(); return finish('draw'); }
         setLocalTurn('blue');
         setSelected(firstOpenRow(placed.board, 3) >= 0 ? 3 : availableColumns(placed.board)[0] ?? 3);
         setLocked(false);
         setStatus('Твой ход');
+        settleDrop();
       })();
     }, 520);
   };
@@ -408,14 +422,18 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
         setBoard(room?.board.map((row) => [...row]) ?? board);
         setLocked(false);
         notice.show('Ход не прошёл');
-      } else if (validRoom(data) && userId) applyRoom(data, userId);
+      } else if (validRoom(data) && userId) {
+        applyRoom(data, userId);
+      }
+      settleDrop();
       return;
     }
     pendingMoveRef.current = null;
     const line = findWinningLine(placed.board, placed.row, column, chip);
-    if (line) return finish(chip, line);
-    if (placed.board.flat().every(Boolean)) return finish('draw');
+    if (line) { settleDrop(); return finish(chip, line); }
+    if (placed.board.flat().every(Boolean)) { settleDrop(); return finish('draw'); }
     runRobot(placed.board);
+    settleDrop();
   };
 
   const publishPreview = (column: number) => {
@@ -478,7 +496,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       game={
         <section className="connect-sheet" ref={sheetRef} aria-label="Игровое поле">
           <div className="connect-hole-layer" ref={holeLayerRef} aria-hidden="true" />
-          {!dropping && !winner && firstOpenRow(board, previewColumn ?? 3) >= 0 && <span ref={previewRef} className={`connect-preview connect-preview--${previewChip}`} aria-hidden="true" />}
+          {!dropping && !winner && previewColumn !== null && firstOpenRow(board, previewColumn) >= 0 && <span ref={previewRef} className={`connect-preview connect-preview--${previewChip}`} aria-hidden="true" />}
           <div className="connect-body-layer" ref={bodyLayerRef} aria-hidden="true" />
           <div className="connect-board-wrap" ref={boardWrapRef} data-game-input onPointerDown={beginBoardDrag} onPointerMove={moveBoardDrag} onPointerUp={endBoardDrag} onPointerCancel={endBoardDrag}>
             <div className="connect-board" ref={boardElementRef} aria-hidden="true">

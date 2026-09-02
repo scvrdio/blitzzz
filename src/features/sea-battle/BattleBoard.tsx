@@ -11,6 +11,8 @@ export type BattleGridProps = {
   ships: readonly Ship[];
   shots: Readonly<ShotBoard>;
   revealShips: boolean;
+  color?: 'blue' | 'black';
+  hitColor?: 'blue' | 'black';
   interactive?: boolean;
   draftCells?: readonly number[];
   draftValid?: boolean;
@@ -49,7 +51,7 @@ function shipPosition(cells: readonly number[]): { style: CSSProperties; horizon
   };
 }
 
-export function BattleGrid({ ships, shots, revealShips, interactive = false, draftCells = [], draftValid = false, showRemoveHints = false, onCellClick, onDragStart, onDragMove, onDragEnd }: BattleGridProps) {
+export function BattleGrid({ ships, shots, revealShips, color = 'blue', hitColor = color, interactive = false, draftCells = [], draftValid = false, showRemoveHints = false, onCellClick, onDragStart, onDragMove, onDragEnd }: BattleGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   const sunkRef = useRef<Set<string> | null>(null);
   const shotsRef = useRef<Readonly<ShotBoard> | null>(null);
@@ -128,12 +130,12 @@ export function BattleGrid({ ships, shots, revealShips, interactive = false, dra
         const sunk = isShipSunk(ship, shots);
         if (!revealShips && !sunk) return null;
         const position = shipPosition(ship.cells);
-        return <span key={ship.id} className={classNames('battle-board__ship', position.horizontal ? 'is-horizontal' : 'is-vertical', sunk && 'is-sunk')} style={position.style} aria-hidden="true" />;
+        return <span key={ship.id} className={classNames('battle-board__ship', `battle-board__ship--${color}`, position.horizontal ? 'is-horizontal' : 'is-vertical', sunk && 'is-sunk')} style={position.style} aria-hidden="true" />;
       })}
 
       {draftCells.length ? (() => {
         const position = shipPosition(draftCells);
-        return <span className={classNames('battle-board__ship', 'is-draft', position.horizontal ? 'is-horizontal' : 'is-vertical', !draftValid && 'is-invalid')} style={position.style} aria-hidden="true" />;
+        return <span className={classNames('battle-board__ship', `battle-board__ship--${color}`, 'is-draft', position.horizontal ? 'is-horizontal' : 'is-vertical', !draftValid && 'is-invalid')} style={position.style} aria-hidden="true" />;
       })() : null}
 
       {shots.map((shot, cell) => {
@@ -141,7 +143,7 @@ export function BattleGrid({ ships, shots, revealShips, interactive = false, dra
         if (shot === 'miss') return <span key={cell} className="battle-board__miss" style={cellPosition(cell)} aria-hidden="true" />;
         const ship = shipAt(ships, cell);
         const sunk = ship ? isShipSunk(ship, shots) : false;
-        return <span key={cell} className={classNames('battle-board__hit', sunk && 'is-sunk', revealShips && !sunk && 'is-on-ship')} style={cellPosition(cell)} aria-hidden="true" />;
+        return <span key={cell} className={classNames('battle-board__hit', `battle-board__hit--${hitColor}`, sunk && 'is-sunk', revealShips && !sunk && 'is-on-ship')} style={cellPosition(cell)} aria-hidden="true" />;
       })}
 
       {showRemoveHints ? ships.map((ship) => (

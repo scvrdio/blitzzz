@@ -12,7 +12,6 @@ import { classNames } from '../../lib/class-names';
 import { errorMessage, shareGameInvite } from '../../lib/game-invite';
 import { ensureAnonymousUser, supabase } from '../../lib/supabase/client';
 import { telegram, telegramProfile } from '../../lib/telegram/client';
-import { playGameSound } from '../../lib/game-sound';
 import { BattleBoard, BattleBoardFrame, BattleGrid } from './BattleBoard';
 import { canPlaceShip, chooseRobotTarget, emptyShots, fireAt, fleetCounts, fleetSizes, placementCells, randomFleet, remainingFleet, shipAt, survivingFleet, type FleetCounts, type Ship, type ShipSize, type ShotBoard } from './engine';
 import { opponentSide, readyFor, shotsFor, sideForUser, sunkFor, validFleet, validSeaBattleRoom, type SeaBattleRoom } from './multiplayer';
@@ -36,7 +35,7 @@ function fleetAfterSunk(ships: readonly Ship[]): FleetCounts {
   return remaining;
 }
 
-function FleetSetup({ ships, waiting }: { ships: readonly Ship[]; waiting?: string }) {
+function FleetSetup({ ships, waiting, color }: { ships: readonly Ship[]; waiting?: string; color: 'blue' | 'black' }) {
   const remaining = remainingFleet(ships);
   return (
     <div className="battle-setup">
@@ -44,7 +43,7 @@ function FleetSetup({ ships, waiting }: { ships: readonly Ship[]; waiting?: stri
         <strong>{waiting ? 'Флот готов' : 'Расставь корабли'}</strong>
         <span>{waiting ?? <>Выдели клетки на поле,<br />чтобы поставить корабль</>}</span>
       </div>
-      <div className="battle-inventory" aria-label="Оставшиеся корабли">
+      <div className={classNames('battle-inventory', `battle-inventory--${color}`)} aria-label="Оставшиеся корабли">
         {inventorySizes.map((size) => (
           <span key={size} className={classNames('battle-inventory__item', remaining[size] === 0 && 'is-empty')}>
             <strong>{remaining[size]} ×</strong>
@@ -63,23 +62,25 @@ type BattleFieldsProps = {
   playerShots: ShotBoard;
   opponentShots: ShotBoard;
   interactive: boolean;
+  playerColor: 'blue' | 'black';
+  opponentColor: 'blue' | 'black';
   onFire: (cell: number) => void;
   revealOpponentShips?: boolean;
   onToggleField?: () => void;
 };
 
-function BattleFields({ field, playerShips, opponentShips, playerShots, opponentShots, interactive, onFire, revealOpponentShips = false, onToggleField }: BattleFieldsProps) {
+function BattleFields({ field, playerShips, opponentShips, playerShots, opponentShots, interactive, playerColor, opponentColor, onFire, revealOpponentShips = false, onToggleField }: BattleFieldsProps) {
   const showingOpponent = field === 'opponent';
   return (
     <BattleBoardFrame>
       <div className="battle-board-scene">
         <div className={classNames('battle-board-flipper', showingOpponent && 'is-showing-opponent')}>
           <div className="battle-board-face battle-board-face--mine" aria-hidden={showingOpponent}>
-            <BattleGrid ships={playerShips} shots={opponentShots} revealShips interactive={false} />
+            <BattleGrid ships={playerShips} shots={opponentShots} revealShips color={playerColor} hitColor={opponentColor} interactive={false} />
             {onToggleField ? <button className="battle-board__view-toggle" type="button" onClick={onToggleField} aria-label="Показать поле соперника" /> : null}
           </div>
           <div className="battle-board-face battle-board-face--opponent" aria-hidden={!showingOpponent}>
-            <BattleGrid ships={opponentShips} shots={playerShots} revealShips={revealOpponentShips} interactive={interactive && showingOpponent} onCellClick={onFire} />
+            <BattleGrid ships={opponentShips} shots={playerShots} revealShips={revealOpponentShips} color={opponentColor} hitColor={playerColor} interactive={interactive && showingOpponent} onCellClick={onFire} />
             {onToggleField ? <button className="battle-board__view-toggle" type="button" onClick={onToggleField} aria-label="Показать своё поле" /> : null}
           </div>
         </div>
@@ -113,6 +114,8 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
   const timers = useTimeoutRegistry();
   const setupComplete = playerShips.length === fleetSizes.length;
   const mySide = room ? sideForUser(room, userId) : null;
+  const playerColor: 'blue' | 'black' = mySide === 'guest' ? 'black' : 'blue';
+  const opponentColor: 'blue' | 'black' = playerColor === 'blue' ? 'black' : 'blue';
   const myReady = Boolean(room && mySide && readyFor(room, mySide));
   const isMyTurn = room && mySide ? room.turn === mySide : localTurn === 'player';
 
@@ -476,13 +479,14 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
       notice={notice.message}
       status={status}
       statusMuted={statusIsBlack}
-      hero={phase === 'setup' ? <FleetSetup ships={playerShips} waiting={waitingCopy} /> : undefined}
+      hero={phase === 'setup' ? <FleetSetup ships={playerShips} waiting={waitingCopy} color={playerColor} /> : undefined}
       gameInset={false}
       game={phase === 'setup'
         ? <BattleBoard
             ships={playerShips}
             shots={opponentShots}
             revealShips
+            color={playerColor}
             interactive={!myReady}
             draftCells={draft}
             draftValid={draftValid}
@@ -498,6 +502,8 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
             playerShots={playerShots}
             opponentShots={opponentShots}
             interactive={phase === 'battle' && isMyTurn && !resolvingShot}
+            playerColor={playerColor}
+            opponentColor={opponentColor}
             onFire={(cell) => void fire(cell)}
             revealOpponentShips={phase === 'finished'}
             onToggleField={phase === 'finished' ? () => {
@@ -517,7 +523,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
             </GameFooter>
         : phase === 'finished'
           ? <GameFooter variant="button" onPlayAgain={() => void restart()} />
-          : <GameFooter variant="ships" label={showingMine ? 'Мои корабли' : 'Корабли соперника'} ships={footerShips(battleFleet)} />}
+          : <GameFooter variant="ships" label={showingMine ? 'Мои корабли' : 'Корабли соперника'} ships={footerShips(battleFleet)} color={showingMine ? playerColor : opponentColor} />}
     />
   );
 }

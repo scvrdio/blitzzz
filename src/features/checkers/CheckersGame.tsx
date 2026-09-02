@@ -321,7 +321,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
               {screenIndices.map((index, screenIndex) => {
                 const piece = cells[index];
                 const isAvailable = available.some((move) => move.to === index);
-                return <button key={index} type="button" className={classNames('checker-square', selected === index && 'is-selected', isAvailable && 'is-available')} aria-label={`${displayedColumns[screenIndex % 8] ?? ''}${displayedRows[Math.floor(screenIndex / 8)] ?? ''}${piece ? `, ${checkerColor(piece) === 'blue' ? 'синяя' : 'чёрная'} шашка${isKing(piece) ? ', дамка' : ''}` : ''}`} disabled={locked} onClick={() => tap(index)}>{piece && <span className={classNames('checker-piece', `checker-piece--${checkerColor(piece)}`, isKing(piece) && 'is-king', movingPiece === index && 'is-moving')} aria-hidden="true" />}</button>;
+                return <button key={index} type="button" className={classNames('checker-square', selected === index && `is-selected-${myColor}`, isAvailable && `is-available-${myColor}`)} aria-label={`${displayedColumns[screenIndex % 8] ?? ''}${displayedRows[Math.floor(screenIndex / 8)] ?? ''}${piece ? `, ${checkerColor(piece) === 'blue' ? 'синяя' : 'чёрная'} шашка${isKing(piece) ? ', дамка' : ''}` : ''}`} disabled={locked} onClick={() => tap(index)}>{piece && <span className={classNames('checker-piece', `checker-piece--${checkerColor(piece)}`, isKing(piece) && 'is-king', movingPiece === index && 'is-moving')} aria-hidden="true" />}</button>;
               })}
             </div>
             <div className="checkers-rows checkers-rows--right">{displayedRows.map((label) => <span key={label}>{label}</span>)}</div>

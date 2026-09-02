@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   async redirects() {
     return [
       { source: '/four-in-a-row/index.html', destination: '/games/four-in-a-row', permanent: false },

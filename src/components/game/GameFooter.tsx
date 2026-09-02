@@ -46,6 +46,7 @@ type ShipsFooterProps = SharedFooterProps & {
   variant: 'ships';
   label: string;
   ships: readonly GameFooterShip[];
+  color?: 'blue' | 'black';
 };
 
 export type GameFooterProps = EmptyFooterProps | ButtonFooterProps | TabbarFooterProps | SliderFooterProps | ShipsFooterProps | CustomFooterProps;
@@ -99,7 +100,7 @@ export function GameFooter(props: GameFooterProps) {
 
   if (props.variant === 'ships') {
     return (
-      <footer className={classNames('game-footer', 'game-footer--ships', props.className)} data-node-id="91:8995">
+      <footer className={classNames('game-footer', 'game-footer--ships', `game-footer--ships-${props.color ?? 'blue'}`, props.className)} data-node-id="91:8995">
         <span className="game-footer__ships-label">{props.label}</span>
         <span className="game-footer__ships-list" aria-label={props.label}>
           {props.ships.map(({ size, count }) => (

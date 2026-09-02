@@ -5,6 +5,7 @@ import { GameStatus } from './GameStatus';
 import { TurnIndicator } from './TurnIndicator';
 import { Notice } from '../ui/Notice';
 import { GameOutcomeEffect, type GameOutcome } from './GameOutcomeEffect';
+import { DevMultiplayerSwitcher } from '../dev/DevMultiplayerSwitcher';
 
 type GameShellProps = {
   title: string;
@@ -34,6 +35,7 @@ export function GameShell({ title, opponent, onInvite, notice = null, status = '
       </section>
       {footer}
       <Notice message={notice} />
+      <DevMultiplayerSwitcher />
     </main>
   );
 }
