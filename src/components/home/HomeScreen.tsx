@@ -41,7 +41,7 @@ export function HomeScreen() {
     <main className="home-screen">
       <GameHeader
         className="home-header"
-        title="Blitzzz"
+        title="Blitz"
         badge={<PlayerBadge name={profile?.name || 'Игрок'} avatar={profile?.photoUrl} />}
         leading={<ThemeToggle />}
       />
