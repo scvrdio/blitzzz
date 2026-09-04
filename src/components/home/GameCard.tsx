@@ -8,24 +8,25 @@ import { Badge } from '../ui/Badge';
 
 type GameCardProps = { game: GameDefinition; onUnavailable: () => void };
 
-const gamePreviews: Record<GameDefinition['id'], string> = {
-  'four-in-a-row': '/game-previews/four-in-a-row.png',
-  'tic-tac-toe': '/game-previews/tic-tac-toe.png',
-  'sea-battle': '/game-previews/sea-battle.png',
-  checkers: '/game-previews/checkers.png',
-  quoridor: '/game-previews/quoridor.png',
-  chapayev: '/game-previews/chapayev.png',
+const gameIcons: Record<GameDefinition['id'], string> = {
+  'four-in-a-row': '/game-icons/four-in-a-row.svg',
+  'tic-tac-toe': '/game-icons/tic-tac-toe.svg',
+  'sea-battle': '/game-icons/sea-battle.svg',
+  checkers: '/game-icons/checkers.svg',
+  quoridor: '/game-icons/quoridor.svg',
+  chapayev: '/game-icons/chapayev.svg',
 };
 
 export function GameCard({ game, onUnavailable }: GameCardProps) {
   const router = useRouter();
   const content = <>
+    <span className="game-card__visual" aria-hidden="true">
+      <img src={gameIcons[game.id]} alt="" />
+    </span>
     <span className="game-card__copy">
       <strong>{game.title}</strong>
       <span>{game.description}</span>
-    </span>
-    <span className={`game-card__art game-card__art--${game.id}`} aria-hidden="true">
-      <img src={gamePreviews[game.id]} alt="" />
+      <time>{game.duration}</time>
     </span>
     {!game.href && <Badge>скоро</Badge>}
   </>;

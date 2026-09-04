@@ -7,41 +7,60 @@ export type GameDefinition = {
   id: GamePreviewKind;
   title: string;
   description: string;
+  duration: string;
   href?: `/games/${GameId}`;
   startPrefix?: 'game_' | 'checkers_' | 'tic_tac_toe' | 'sea_battle_' | 'chapayev' | 'quoridor';
 };
 
 export const games: readonly GameDefinition[] = [
   {
-    id: 'four-in-a-row',
-    title: 'Четыре в ряд',
-    description: 'Собери четыре фишки в линию',
-    href: '/games/four-in-a-row',
-    startPrefix: 'game_',
-  },
-  {
-    id: 'tic-tac-toe',
-    title: 'Крестики-нолики',
-    description: 'Выстрой три своих знака в ряд',
-    href: '/games/tic-tac-toe',
-    startPrefix: 'tic_tac_toe',
-  },
-  {
     id: 'sea-battle',
     title: 'Морской бой',
-    description: 'Найди и потопи корабли',
+    description: 'Стреляйте наугад —\nэто стратегия.',
+    duration: '5-10 мин',
     href: '/games/sea-battle',
     startPrefix: 'sea_battle_',
   },
   {
     id: 'checkers',
     title: 'Шашки',
-    description: 'Забери все шашки',
+    description: 'Никаких коней, слонов\nи вот этого всего.',
+    duration: '5-15 мин',
     href: '/games/checkers',
     startPrefix: 'checkers_',
   },
-  { id: 'quoridor', title: 'Коридор', description: 'Дойди до края поля первым', href: '/games/quoridor', startPrefix: 'quoridor' },
-  { id: 'chapayev', title: 'Чапаева', description: 'Сбей все шашки', href: '/games/chapayev', startPrefix: 'chapayev' },
+  {
+    id: 'four-in-a-row',
+    title: 'Четыре в ряд',
+    description: 'Как три в ряд,\nтолько четыре.',
+    duration: '<1 мин',
+    href: '/games/four-in-a-row',
+    startPrefix: 'game_',
+  },
+  {
+    id: 'quoridor',
+    title: 'Коридор',
+    description: 'Двигайте кружочки,\nставьте стеночки...',
+    duration: '<5 мин',
+    href: '/games/quoridor',
+    startPrefix: 'quoridor',
+  },
+  {
+    id: 'chapayev',
+    title: 'Чапаева',
+    description: 'Выбивайте шашки.\nЖелательно не свои.',
+    duration: '5-10 мин',
+    href: '/games/chapayev',
+    startPrefix: 'chapayev',
+  },
+  {
+    id: 'tic-tac-toe',
+    title: 'Крестики-нолики',
+    description: 'Всего девять клеток,\nразберётесь.',
+    duration: '<1 мин',
+    href: '/games/tic-tac-toe',
+    startPrefix: 'tic_tac_toe',
+  },
 ] as const;
 
 export function gamePathFromStartParam(startParam?: string | null): string | null {
