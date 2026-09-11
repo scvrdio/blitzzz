@@ -19,6 +19,10 @@ export function HomeScreen() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get('leave') === '1') {
+      window.history.replaceState(null, '', '/');
+      return;
+    }
     const destination = gamePathFromStartParam(telegram.startParam ?? params.get('tgWebAppStartParam'));
     if (destination) router.replace(destination);
   }, [router]);

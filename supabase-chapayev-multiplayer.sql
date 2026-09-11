@@ -1,6 +1,6 @@
 -- Run once in Supabase → SQL Editor. Anonymous authentication must be enabled.
 
-create table public.chapayev_rooms (
+create table if not exists public.chapayev_rooms (
   id uuid primary key default gen_random_uuid(),
   blue_player uuid not null references auth.users(id),
   black_player uuid references auth.users(id),
@@ -18,12 +18,13 @@ create table public.chapayev_rooms (
 );
 
 alter table public.chapayev_rooms enable row level security;
+drop policy if exists "Players can read their Chapayev room" on public.chapayev_rooms;
 create policy "Players can read their Chapayev room" on public.chapayev_rooms
   for select to authenticated using (auth.uid() = blue_player or auth.uid() = black_player);
 
 create or replace function public.chapayev_initial_pieces()
 returns jsonb language sql immutable as $$
-  select jsonb_agg(jsonb_build_object('id', side || '-' || idx, 'side', side, 'x', (idx + .5) / 8, 'y', row + .5 / 8, 'vx', 0, 'vy', 0))
+  select jsonb_agg(jsonb_build_object('id', side || '-' || idx, 'side', side, 'x', (idx + .5) / 8, 'y', (row + .5) / 8, 'vx', 0, 'vy', 0))
   from (values ('blue'::text, 7::numeric), ('black'::text, 0::numeric)) sides(side, row)
   cross join generate_series(0, 7) idx;
 $$;
@@ -93,4 +94,8 @@ grant execute on function public.make_chapayev_move(uuid, jsonb, jsonb, text, te
 grant execute on function public.restart_chapayev_room(uuid) to anon, authenticated;
 
 alter table public.chapayev_rooms replica identity full;
-alter publication supabase_realtime add table public.chapayev_rooms;
+do $$ begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'chapayev_rooms') then
+    alter publication supabase_realtime add table public.chapayev_rooms;
+  end if;
+end $$;

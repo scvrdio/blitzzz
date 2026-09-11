@@ -37,6 +37,7 @@ function validRoom(value: unknown): value is ConnectFourRoom {
 }
 
 const wait = (delay: number) => new Promise<void>((resolve) => window.setTimeout(resolve, delay));
+const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 
 export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const [board, setBoard] = useState<ConnectFourBoard>(emptyConnectFourBoard);
@@ -249,7 +250,10 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       await animateDrop(change.column, change.row, change.chip);
     }
     applyRoom(next, currentUserId);
-    if (shouldAnimate) settleDrop();
+    if (shouldAnimate) {
+      await waitForPaint();
+      settleDrop();
+    }
   };
 
   const subscribe = (id: string, currentUserId: string) => {
@@ -386,6 +390,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
         await animateDrop(column, placed.row, 'black');
         if (!mountedRef.current || robotTurnRef.current !== turn) return;
         setBoard(placed.board);
+        await waitForPaint();
         const line = findWinningLine(placed.board, placed.row, column, 'black');
         if (line) { settleDrop(); return finish('black', line); }
         if (placed.board.flat().every(Boolean)) { settleDrop(); return finish('draw'); }
@@ -415,6 +420,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     await animateDrop(column, placed.row, chip);
     boardRef.current = placed.board;
     setBoard(placed.board);
+    await waitForPaint();
     if (request) {
       const { data, error } = await request;
       pendingMoveRef.current = null;

@@ -76,11 +76,11 @@ function BattleFields({ field, playerShips, opponentShips, playerShots, opponent
       <div className="battle-board-scene">
         <div className={classNames('battle-board-flipper', showingOpponent && 'is-showing-opponent')}>
           <div className="battle-board-face battle-board-face--mine" aria-hidden={showingOpponent}>
-            <BattleGrid ships={playerShips} shots={opponentShots} revealShips color={playerColor} hitColor={opponentColor} interactive={false} />
+            <BattleGrid ships={playerShips} shots={opponentShots} revealShips color={playerColor} hitColor={opponentColor} missColor={opponentColor} whiteHitsOnShips interactive={false} />
             {onToggleField ? <button className="battle-board__view-toggle" type="button" onClick={onToggleField} aria-label="Показать поле соперника" /> : null}
           </div>
           <div className="battle-board-face battle-board-face--opponent" aria-hidden={!showingOpponent}>
-            <BattleGrid ships={opponentShips} shots={playerShots} revealShips={revealOpponentShips} color={opponentColor} hitColor={playerColor} interactive={interactive && showingOpponent} onCellClick={onFire} />
+            <BattleGrid ships={opponentShips} shots={playerShots} revealShips={revealOpponentShips} color={opponentColor} hitColor={playerColor} missColor={playerColor} interactive={interactive && showingOpponent} onCellClick={onFire} />
             {onToggleField ? <button className="battle-board__view-toggle" type="button" onClick={onToggleField} aria-label="Показать своё поле" /> : null}
           </div>
         </div>

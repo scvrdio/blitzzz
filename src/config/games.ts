@@ -9,7 +9,7 @@ export type GameDefinition = {
   description: string;
   duration: string;
   href?: `/games/${GameId}`;
-  startPrefix?: 'game_' | 'checkers_' | 'tic_tac_toe' | 'sea_battle_' | 'chapayev' | 'quoridor';
+  startPrefix?: 'game_' | 'checkers_' | 'tic_tac_toe_' | 'sea_battle_' | 'chapayev_' | 'quoridor_';
 };
 
 export const games: readonly GameDefinition[] = [
@@ -43,7 +43,7 @@ export const games: readonly GameDefinition[] = [
     description: 'Двигайте кружочки,\nставьте стеночки...',
     duration: '<5 мин',
     href: '/games/quoridor',
-    startPrefix: 'quoridor',
+    startPrefix: 'quoridor_',
   },
   {
     id: 'chapayev',
@@ -51,7 +51,7 @@ export const games: readonly GameDefinition[] = [
     description: 'Выбивайте шашки.\nЖелательно не свои.',
     duration: '5-10 мин',
     href: '/games/chapayev',
-    startPrefix: 'chapayev',
+    startPrefix: 'chapayev_',
   },
   {
     id: 'tic-tac-toe',
@@ -59,7 +59,7 @@ export const games: readonly GameDefinition[] = [
     description: 'Всего девять клеток,\nразберётесь.',
     duration: '<1 мин',
     href: '/games/tic-tac-toe',
-    startPrefix: 'tic_tac_toe',
+    startPrefix: 'tic_tac_toe_',
   },
 ] as const;
 

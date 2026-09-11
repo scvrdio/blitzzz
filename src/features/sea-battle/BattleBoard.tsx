@@ -13,6 +13,8 @@ export type BattleGridProps = {
   revealShips: boolean;
   color?: 'blue' | 'black';
   hitColor?: 'blue' | 'black';
+  missColor?: 'blue' | 'black';
+  whiteHitsOnShips?: boolean;
   interactive?: boolean;
   draftCells?: readonly number[];
   draftValid?: boolean;
@@ -51,7 +53,7 @@ function shipPosition(cells: readonly number[]): { style: CSSProperties; horizon
   };
 }
 
-export function BattleGrid({ ships, shots, revealShips, color = 'blue', hitColor = color, interactive = false, draftCells = [], draftValid = false, showRemoveHints = false, onCellClick, onDragStart, onDragMove, onDragEnd }: BattleGridProps) {
+export function BattleGrid({ ships, shots, revealShips, color = 'blue', hitColor = color, missColor = hitColor, whiteHitsOnShips = false, interactive = false, draftCells = [], draftValid = false, showRemoveHints = false, onCellClick, onDragStart, onDragMove, onDragEnd }: BattleGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   const sunkRef = useRef<Set<string> | null>(null);
   const shotsRef = useRef<Readonly<ShotBoard> | null>(null);
@@ -140,10 +142,10 @@ export function BattleGrid({ ships, shots, revealShips, color = 'blue', hitColor
 
       {shots.map((shot, cell) => {
         if (!shot) return null;
-        if (shot === 'miss') return <span key={cell} className="battle-board__miss" style={cellPosition(cell)} aria-hidden="true" />;
+        if (shot === 'miss') return <span key={cell} className={classNames('battle-board__miss', `battle-board__miss--${missColor}`)} style={cellPosition(cell)} aria-hidden="true" />;
         const ship = shipAt(ships, cell);
         const sunk = ship ? isShipSunk(ship, shots) : false;
-        return <span key={cell} className={classNames('battle-board__hit', `battle-board__hit--${hitColor}`, sunk && 'is-sunk', revealShips && !sunk && 'is-on-ship')} style={cellPosition(cell)} aria-hidden="true" />;
+        return <span key={cell} className={classNames('battle-board__hit', `battle-board__hit--${hitColor}`, sunk && 'is-sunk', revealShips && !sunk && 'is-on-ship', revealShips && !sunk && whiteHitsOnShips && 'is-white')} style={cellPosition(cell)} aria-hidden="true" />;
       })}
 
       {showRemoveHints ? ships.map((ship) => (

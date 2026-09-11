@@ -22,6 +22,8 @@ const enabled = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC
 function configForPath(pathname: string): RoomConfig | null {
   if (pathname === '/games/four-in-a-row') return { table: 'connect_four_rooms', hostColumn: 'blue_player', guestColumn: 'black_player', createRpc: 'create_connect_four_room', createArgs: { player_name: 'Игрок', player_avatar: null } };
   if (pathname === '/games/checkers') return { table: 'checkers_rooms', hostColumn: 'blue_player', guestColumn: 'black_player', createRpc: 'create_checkers_room', createArgs: { player_name: 'Игрок', player_avatar: null } };
+  if (pathname === '/games/tic-tac-toe') return { table: 'tic_tac_toe_rooms', hostColumn: 'x_player', guestColumn: 'o_player', createRpc: 'create_tic_tac_toe_room', createArgs: { player_name: 'Игрок', player_avatar: null } };
+  if (pathname === '/games/quoridor') return { table: 'quoridor_rooms', hostColumn: 'blue_player', guestColumn: 'black_player', createRpc: 'create_quoridor_room', createArgs: { player_name: 'Игрок', player_avatar: null } };
   if (pathname === '/games/chapayev') return { table: 'chapayev_rooms', hostColumn: 'blue_player', guestColumn: 'black_player', createRpc: 'create_chapayev_room', createArgs: { player_name: 'Игрок', player_avatar: null } };
   if (pathname === '/games/sea-battle') return { table: 'sea_battle_rooms', hostColumn: 'host_player', guestColumn: 'guest_player', createRpc: 'create_sea_battle_room', createArgs: { p_player_name: 'Игрок', p_player_avatar: null } };
   return null;

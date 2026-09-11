@@ -1,5 +1,10 @@
 import { QuoridorGame } from '../../../features/quoridor/QuoridorGame';
 
-export default function QuoridorPage() {
-  return <QuoridorGame />;
+type QuoridorPageProps = {
+  searchParams: Promise<{ room?: string }>;
+};
+
+export default async function QuoridorPage({ searchParams }: QuoridorPageProps) {
+  const { room } = await searchParams;
+  return <QuoridorGame initialRoomId={room} />;
 }
