@@ -51,7 +51,7 @@ a { color: inherit; }
 .game-screen { --game-player-color: var(--color-primary); --game-header-ink: #ffffff; position: relative; width: min(100%, var(--game-container-width)); height: min(100%, var(--frame-height)); min-height: min(670px, 100%); margin: auto; overflow: hidden; display: flex; flex-direction: column; background: var(--game-player-color); border-radius: var(--radius-frame); }
 .game-screen--black { --game-player-color: var(--color-foreground); --game-header-ink: var(--color-background); }
 :root[data-theme='dark'] .game-screen--blue { --game-header-ink: #111111; }
-.game-content { position: relative; z-index: 1; display: flex; flex: 1; min-height: 0; flex-direction: column; overflow: hidden; margin-top: var(--space-2); border-radius: var(--radius-frame) var(--radius-frame) 0 0; background: var(--color-background); backface-visibility: hidden; will-change: transform; animation: game-panel-enter 720ms 120ms cubic-bezier(.3, .7, .2, 1) both; }
+.game-content { position: relative; z-index: 1; display: flex; flex: 1; min-height: 0; flex-direction: column; overflow: hidden; margin-top: var(--space-2); border-radius: var(--radius-frame) var(--radius-frame) 0 0; background: var(--color-background); backface-visibility: hidden; will-change: transform; animation: game-panel-enter 480ms 120ms cubic-bezier(.3, .7, .2, 1) both; }
 @keyframes game-panel-enter { from { transform: translate3d(0, calc(100% + var(--space-2)), 0); } to { transform: translate3d(0, 0, 0); } }
 .app-header { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: start; width: 100%; }
 .app-header__side { width: 44px; min-height: 44px; }

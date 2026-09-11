@@ -51,8 +51,12 @@ export function GameCard({ game, onUnavailable }: GameCardProps) {
         prefetch();
         telegram.impact('light');
         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
         document.documentElement.classList.add('is-opening-game');
-        window.setTimeout(() => document.documentElement.classList.remove('is-opening-game'), 3000);
+        window.setTimeout(() => document.documentElement.classList.remove('is-opening-game'), 10000);
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => router.push(game.href!));
+        });
       }}
     >
       {content}
