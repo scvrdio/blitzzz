@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { GameFooter } from '../../components/game/GameFooter';
 import { GameShell } from '../../components/game/GameShell';
@@ -37,7 +38,6 @@ function validRoom(value: unknown): value is ConnectFourRoom {
 }
 
 const wait = (delay: number) => new Promise<void>((resolve) => window.setTimeout(resolve, delay));
-const waitForPaint = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 
 export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   const [board, setBoard] = useState<ConnectFourBoard>(emptyConnectFourBoard);
@@ -156,6 +156,12 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     telegram.impact('medium');
   };
 
+  const commitSettledDrop = (nextBoard: ConnectFourBoard) => {
+    boardRef.current = nextBoard;
+    flushSync(() => setBoard(nextBoard));
+    settleDrop();
+  };
+
   useLayoutEffect(() => {
     const preview = previewRef.current;
     const boardElement = boardElementRef.current;
@@ -249,11 +255,9 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       setLocked(true);
       await animateDrop(change.column, change.row, change.chip);
     }
-    applyRoom(next, currentUserId);
-    if (shouldAnimate) {
-      await waitForPaint();
-      settleDrop();
-    }
+    if (shouldAnimate) flushSync(() => applyRoom(next, currentUserId));
+    else applyRoom(next, currentUserId);
+    if (shouldAnimate) settleDrop();
   };
 
   const subscribe = (id: string, currentUserId: string) => {
@@ -389,16 +393,14 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
         if (!placed) return;
         await animateDrop(column, placed.row, 'black');
         if (!mountedRef.current || robotTurnRef.current !== turn) return;
-        setBoard(placed.board);
-        await waitForPaint();
+        commitSettledDrop(placed.board);
         const line = findWinningLine(placed.board, placed.row, column, 'black');
-        if (line) { settleDrop(); return finish('black', line); }
-        if (placed.board.flat().every(Boolean)) { settleDrop(); return finish('draw'); }
+        if (line) return finish('black', line);
+        if (placed.board.flat().every(Boolean)) return finish('draw');
         setLocalTurn('blue');
         setSelected(firstOpenRow(placed.board, 3) >= 0 ? 3 : availableColumns(placed.board)[0] ?? 3);
         setLocked(false);
         setStatus('Твой ход');
-        settleDrop();
       })();
     }, 520);
   };
@@ -418,9 +420,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
     pendingMoveRef.current = { row: placed.row, column, chip };
     const request = room ? supabase.rpc('make_connect_four_move', { room_id: room.id, selected_column: column }) : null;
     await animateDrop(column, placed.row, chip);
-    boardRef.current = placed.board;
-    setBoard(placed.board);
-    await waitForPaint();
+    commitSettledDrop(placed.board);
     if (request) {
       const { data, error } = await request;
       pendingMoveRef.current = null;
@@ -431,15 +431,13 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
       } else if (validRoom(data) && userId) {
         applyRoom(data, userId);
       }
-      settleDrop();
       return;
     }
     pendingMoveRef.current = null;
     const line = findWinningLine(placed.board, placed.row, column, chip);
-    if (line) { settleDrop(); return finish(chip, line); }
-    if (placed.board.flat().every(Boolean)) { settleDrop(); return finish('draw'); }
+    if (line) return finish(chip, line);
+    if (placed.board.flat().every(Boolean)) return finish('draw');
     runRobot(placed.board);
-    settleDrop();
   };
 
   const publishPreview = (column: number) => {
