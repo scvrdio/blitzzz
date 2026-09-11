@@ -47,7 +47,13 @@ export function GameCard({ game, onUnavailable }: GameCardProps) {
       href={game.href}
       onPointerEnter={prefetch}
       onTouchStart={prefetch}
-      onClick={() => { prefetch(); telegram.impact('light'); }}
+      onClick={(event) => {
+        prefetch();
+        telegram.impact('light');
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        document.documentElement.classList.add('is-opening-game');
+        window.setTimeout(() => document.documentElement.classList.remove('is-opening-game'), 3000);
+      }}
     >
       {content}
     </Link>

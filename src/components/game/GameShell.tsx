@@ -29,6 +29,13 @@ export function GameShell({ title, playerColor = 'blue', opponent, onInvite, not
   const activeTurn = status === 'Твой ход' ? 'player' : status === 'Ход соперника' ? 'opponent' : null;
 
   useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      document.documentElement.classList.remove('is-opening-game');
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
     const root = document.documentElement;
     const applyColors = () => {
       const styles = getComputedStyle(root);
