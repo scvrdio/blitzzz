@@ -31,7 +31,7 @@ a { color: inherit; }
 .player-badge:not(.player-badge--labeled):has(.avatar) { padding-left: var(--space-1); }
 
 .home-screen { width: min(100%, var(--container-width)); min-height: 100dvh; margin: auto; padding: max(calc(40px + var(--tg-content-safe-top)), calc((100dvh - var(--frame-height) + 40px + var(--tg-content-safe-top) - var(--tg-content-safe-bottom)) / 2)) calc(var(--space-4) + var(--tg-content-safe-right)) calc(36px + var(--tg-content-safe-bottom)) calc(var(--space-4) + var(--tg-content-safe-left)); background: var(--color-background); }
-.app-header.home-header { width: calc(100% + var(--space-4) + var(--tg-content-safe-left) + var(--space-4) + var(--tg-content-safe-right)); margin-right: calc(-1 * (var(--space-4) + var(--tg-content-safe-right))); margin-bottom: var(--space-6); margin-left: calc(-1 * (var(--space-4) + var(--tg-content-safe-left))); }
+.app-header.home-header { width: calc(100% + var(--space-4) + var(--tg-content-safe-left) + var(--space-4) + var(--tg-content-safe-right)); margin-right: calc(-1 * (var(--space-4) + var(--tg-content-safe-right))); margin-bottom: var(--space-4); margin-left: calc(-1 * (var(--space-4) + var(--tg-content-safe-left))); }
 .game-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-4); row-gap: var(--space-8); }
 .game-card { position: relative; display: flex; flex-direction: column; align-items: center; width: 100%; min-width: 0; border: 0; padding: 0; color: inherit; background: transparent; font: inherit; text-align: center; text-decoration: none; cursor: pointer; transition: transform 1000ms var(--ease-standard); }
 .game-card:active { transform: scale(.85); }
@@ -61,7 +61,7 @@ a { color: inherit; }
 .theme-toggle.is-dark .theme-toggle__sun { opacity: 0; transform: rotate(70deg) scale(.4); }
 .theme-toggle.is-dark .theme-toggle__moon { opacity: 1; transform: rotate(0) scale(1); }
 :root[data-theme='dark'] .theme-toggle img { filter: invert(1); }
-.game-header { position: relative; z-index: 10; flex: none; height: 88px; padding: var(--space-4); animation: game-reveal 260ms cubic-bezier(.2, .8, .2, 1) both; }
+.game-header { position: relative; z-index: 10; flex: none; height: 66px; padding: var(--space-4); animation: game-reveal 260ms cubic-bezier(.2, .8, .2, 1) both; }
 .game-header__invite { width: 44px; height: 44px; min-height: 44px; padding: 14px; }
 .game-header__invite img { display: block; width: 16px; height: 16px; }
 .game-header__exit { position: relative; z-index: 1; justify-self: end; width: 44px; height: 44px; min-height: 44px; padding: 0; text-decoration: none; }
