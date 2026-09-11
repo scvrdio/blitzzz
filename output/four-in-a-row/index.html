@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet">
+  <title>Четыре в ряд</title>
+  <style>
+    :root { color:#111; background:#d9d9d9; font-family:'Merriweather', Georgia, 'Times New Roman', serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; }
+    button { font:inherit; }
+    .app { position:relative; width:min(100%,450px); height:min(100svh,852px); min-height:670px; overflow:hidden; display:flex; flex-direction:column; background:#f8f8f8; border-radius:48px; }
+    .header { height:76px; flex:none; position:relative; padding:16px; display:flex; justify-content:flex-end; align-items:flex-start; z-index:2; }
+    .exit { position:relative; z-index:1; border:0; width:44px; height:44px; padding:0; border-radius:50%; background:rgba(255,255,255,.56); box-shadow:0 1px 1px rgba(0,0,0,.05), inset 0 1px rgba(255,255,255,.9); cursor:pointer; display:grid; place-items:center; }
+    .exit img { width:44px; height:44px; }
+    h1 { position:absolute; inset:22px 0 auto; margin:0; pointer-events:none; text-align:center; font-size:20px; line-height:29px; font-weight:700; }
+    .opponent { position:absolute; top:59px; left:50%; transform:translateX(-50%); display:flex; gap:6px; align-items:center; padding:4px 12px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font-size:12px; font-weight:600; white-space:nowrap; }
+    .opponent img { width:20px; height:20px; border-radius:50%; object-fit:cover; }
+    .game { display:flex; flex:1; min-height:0; flex-direction:column; align-items:center; justify-content:flex-end; gap:32px; }
+    .turn { flex:1; display:grid; place-items:center; width:100%; padding-top:18px; color:#004cff; font-size:40px; font-weight:900; line-height:1.2; }
+    .drop-zone { height:48px; flex:none; width:100%; position:relative; }
+    .chip-preview { position:absolute; top:0; opacity:0; transform:translateY(-26px); filter:drop-shadow(0 5px 10px rgba(0,76,255,.2)); pointer-events:none; transition:transform .15s ease; }
+    .chip-preview img { width:100%; height:100%; display:block; }
+    .chip-preview.show { opacity:1; transform:translateY(-2px); }
+    .board-sheet { flex:none; position:relative; width:100%; border-top:1px solid #dfdfdf; border-radius:40px 40px 0 0; background:#ececec; padding:16px 16px 56px; }
+    .hole-layer, .body-layer { position:absolute; inset:0; pointer-events:none; }
+    .hole-layer { z-index:0; } .body-layer { z-index:2; }
+    .hole { position:absolute; border-radius:50%; background:#f8f8f8; box-shadow:inset 1px 1px #fff, inset -1px -1px #e3e3e3; }
+    .body-cell, .body-gap { position:absolute; background:#ececec; }
+    .body-cell { -webkit-mask:radial-gradient(circle closest-side at 50% 50%, transparent 0 100%, #000 100%); mask:radial-gradient(circle closest-side at 50% 50%, transparent 0 100%, #000 100%); }
+    .board { position:relative; z-index:3; display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
+    .guide { display:none; }
+    .cell { aspect-ratio:1; min-width:0; border-radius:50%; background:transparent; pointer-events:none; transition:background .16s ease; }
+    .cell.blue { background:#004cff; box-shadow:inset 1px 1px rgba(255,255,255,.25), inset -1px -1px rgba(0,0,0,.12); }
+    .cell.black { background:#111; box-shadow:inset 1px 1px rgba(255,255,255,.2), inset -1px -1px rgba(0,0,0,.15); }
+    .cell.path { background:rgba(0,76,255,.3); }
+    .cell.hint { outline:3px solid #004cff; outline-offset:-3px; }
+    .cell.win { outline:3px solid #004cff; outline-offset:-3px; }
+    .controls { height:56px; margin-top:8px; border-radius:999px; display:grid; grid-template-columns:repeat(7,1fr); align-items:center; position:relative; background:#f8f8f8; cursor:grab; touch-action:none; }
+    .control { place-self:center; width:4px; height:4px; border-radius:50%; background:#b8b8b8; }
+    .control.selected { background:#004cff; }
+    .slider-thumb { position:absolute; z-index:1; top:16px; width:24px; height:24px; border:0; border-radius:50%; padding:0; background:#004cff; box-shadow:0 2px 5px rgba(0,76,255,.25); cursor:grab; touch-action:none; }
+    .slider-thumb:active { cursor:grabbing; transform:scale(.96); }
+    .message { position:absolute; inset:auto 24px 36px; padding:12px 16px; text-align:center; border-radius:16px; background:#111; color:white; font-size:14px; opacity:0; transform:translateY(16px); transition:.2s; pointer-events:none; }
+    .message.visible { opacity:1; transform:translateY(0); }
+    .falling-chip { position:absolute; z-index:1; border-radius:50%; pointer-events:none; box-shadow:inset 1px 1px rgba(255,255,255,.26), inset -1px -1px rgba(0,0,0,.12), 0 8px 12px rgba(0,0,0,.14); transition:top .48s cubic-bezier(.55,.055,.675,.19); }
+    .falling-chip.blue { background:#004cff; } .falling-chip.black { background:#111; }
+    @media (max-width:450px) { .app { border-radius:0; } }
+    @media (max-height:730px) { .app { min-height:100svh; } .turn { font-size:34px; } .game { gap:16px; } .board-sheet { padding-bottom:18px; } }
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="Игра Четыре в ряд">
+    <header class="header">
+      <h1>Четыре в ряд</h1>
+      <div class="opponent"><span>Соперник</span><img src="assets/avatar-1.jpeg" alt=""><span>serezha</span></div>
+      <a class="exit" href="../index.html" aria-label="Вернуться на главную"><img src="assets/leave.svg" alt=""></a>
+    </header>
+    <section class="game">
+      <div class="turn" id="turn" aria-live="polite">Твой ход</div>
+      <div class="drop-zone"><div class="chip-preview" id="preview"><img src="assets/selected-column.svg" alt=""></div></div>
+      <section class="board-sheet" aria-label="Игровое поле">
+        <div class="hole-layer" id="holes"></div>
+        <div class="body-layer" id="body-layer"></div>
+        <div class="guide" id="guide"></div>
+        <div class="board" id="board"></div>
+        <div class="controls" id="controls" aria-label="Выбор столбца"></div>
+      </section>
+    </section>
+    <div class="message" id="message" role="status"></div>
+  </main>
+  <script>
+    const rows = 6, cols = 7;
+    let board = Array.from({length: rows}, () => Array(cols).fill(null));
+    let selected = 4, locked = false, timer;
+    const boardEl = document.querySelector('#board'), controls = document.querySelector('#controls');
+    const turn = document.querySelector('#turn'), preview = document.querySelector('#preview'), message = document.querySelector('#message');
+    const guide = document.querySelector('#guide'), boardSheet = document.querySelector('.board-sheet');
+    const holes = document.querySelector('#holes'), bodyLayer = document.querySelector('#body-layer');
+
+    function render() {
+      boardEl.replaceChildren(); controls.replaceChildren();
+      board.forEach((row, r) => row.forEach((value, c) => {
+        const cell = document.createElement('div'); cell.className = `cell ${value || ''}`;
+        const openRow = firstOpen(c);
+        if (!locked && !value && c === selected && r <= openRow) cell.classList.add('path');
+        if (!locked && !value && r === openRow && c === selected) cell.classList.add('hint');
+        cell.setAttribute('aria-hidden', 'true');
+        boardEl.append(cell);
+      }));
+      buildBoardBody();
+      for (let c = 0; c < cols; c++) {
+        const dot = document.createElement('span'); dot.className = `control ${c === selected ? 'selected' : ''}`; dot.dataset.column = c; controls.append(dot);
+      }
+      const thumb = document.createElement('span'); thumb.className = 'slider-thumb'; thumb.setAttribute('aria-hidden', 'true'); controls.append(thumb); updateSelection();
+      controls.onpointerdown = beginSlide;
+    }
+    function buildBoardBody() {
+      holes.replaceChildren(); bodyLayer.replaceChildren();
+      const sheetRect = boardSheet.getBoundingClientRect();
+      const rects = Array.from(boardEl.children, cell => cell.getBoundingClientRect());
+      const add = (parent, className, rect) => { const element = document.createElement('div'); element.className = className; Object.assign(element.style, { left:`${rect.left - sheetRect.left}px`, top:`${rect.top - sheetRect.top}px`, width:`${rect.width}px`, height:`${rect.height}px` }); parent.append(element); };
+      rects.forEach(rect => { add(holes, 'hole', rect); add(bodyLayer, 'body-cell', rect); });
+      const first = rects[0], last = rects[cols - 1];
+      add(bodyLayer, 'body-gap', { left:first.left, top:sheetRect.top, width:last.right - first.left, height:first.top - sheetRect.top });
+      for (let r = 0; r < rows - 1; r++) { const upper = rects[r * cols], lower = rects[(r + 1) * cols]; add(bodyLayer, 'body-gap', { left:upper.left, top:upper.bottom, width:rects[cols - 1].right - upper.left, height:lower.top - upper.bottom }); }
+      for (let c = 0; c < cols - 1; c++) { const left = rects[c], right = rects[c + 1], bottom = rects[(rows - 1) * cols + c].bottom; add(bodyLayer, 'body-gap', { left:left.right, top:left.top, width:right.left - left.right, height:bottom - left.top }); }
+    }
+    function firstOpen(c) { for (let r = rows - 1; r >= 0; r--) if (!board[r][c]) return r; return -1; }
+    function positionPreview() {
+      const targetRow = firstOpen(selected);
+      const target = targetRow < 0 ? null : boardEl.children[targetRow * cols + selected];
+      if (!target || locked) { preview.classList.remove('show'); return; }
+      const targetRect = target.getBoundingClientRect(), zoneRect = preview.parentElement.getBoundingClientRect(), sheetRect = boardSheet.getBoundingClientRect();
+      const visualWidth = targetRect.width * 1.16, visualHeight = visualWidth * 92 / 52;
+      preview.style.width = `${visualWidth}px`; preview.style.height = `${visualHeight}px`;
+      preview.style.left = `${targetRect.left - zoneRect.left + (targetRect.width - visualWidth) / 2}px`;
+      preview.classList.add('show');
+    }
+    function updateSelection() {
+      const openRow = firstOpen(selected);
+      Array.from(boardEl.children).forEach((cell, index) => {
+        const r = Math.floor(index / cols), c = index % cols;
+        cell.classList.toggle('path', !locked && !board[r][c] && c === selected && r <= openRow);
+        cell.classList.toggle('hint', !locked && !board[r][c] && c === selected && r === openRow);
+      });
+      controls.querySelectorAll('.control').forEach(dot => dot.classList.toggle('selected', Number(dot.dataset.column) === selected));
+      const thumb = controls.querySelector('.slider-thumb');
+      if (thumb) { const width = controls.getBoundingClientRect().width; thumb.style.left = `${selected * (width / cols) + width / (cols * 2) - 12}px`; }
+      positionPreview();
+    }
+    function clearSelectionVisuals() {
+      preview.classList.remove('show');
+      Array.from(boardEl.children).forEach(cell => cell.classList.remove('path', 'hint'));
+    }
+    function beginSlide(event) {
+      if (locked) return;
+      event.preventDefault(); const thumb = controls; thumb.setPointerCapture(event.pointerId);
+      const move = pointer => {
+        const rect = controls.getBoundingClientRect();
+        const next = Math.max(0, Math.min(cols - 1, Math.round((pointer.clientX - rect.left) / (rect.width / cols) - .5)));
+        if (next !== selected && firstOpen(next) !== -1) { selected = next; updateSelection(); }
+      };
+      const release = pointer => {
+        if (pointer.pointerId !== event.pointerId) return;
+        move(pointer); thumb.releasePointerCapture(pointer.pointerId); thumb.removeEventListener('pointermove', move); thumb.removeEventListener('pointerup', release); thumb.removeEventListener('pointercancel', cancel);
+        if (firstOpen(selected) !== -1) play(selected, 'blue');
+      };
+      const cancel = pointer => { if (pointer.pointerId === event.pointerId) { thumb.removeEventListener('pointermove', move); thumb.removeEventListener('pointerup', release); thumb.removeEventListener('pointercancel', cancel); } };
+      thumb.addEventListener('pointermove', move); thumb.addEventListener('pointerup', release); thumb.addEventListener('pointercancel', cancel);
+    }
+    function show(text) { message.textContent = text; message.classList.add('visible'); clearTimeout(timer); timer = setTimeout(() => message.classList.remove('visible'), 2200); }
+    async function play(c, color) {
+      if (locked || firstOpen(c) < 0 || color === 'blue' && turn.textContent !== 'Твой ход') return;
+      const r = firstOpen(c); locked = true; clearSelectionVisuals();
+      await animateDrop(c, r, color); board[r][c] = color; render();
+      const win = findWin(r, c, color);
+      if (win) return finish(color, win);
+      if (board.flat().every(Boolean)) return finish(null);
+      if (color === 'blue') { turn.textContent = 'Ход соперника'; locked = true; preview.classList.remove('show'); setTimeout(computer, 520); }
+      else { locked = false; turn.textContent = 'Твой ход'; render(); }
+    }
+    async function computer() {
+      const options = Array.from({length:cols}, (_, c) => c).filter(c => firstOpen(c) !== -1);
+      const c = options.includes(3) ? 3 : options[Math.floor(Math.random() * options.length)];
+      locked = false; await play(c, 'black');
+    }
+    async function animateDrop(c, r, color) {
+      const target = boardEl.children[r * cols + c], targetRect = target.getBoundingClientRect(), sheetRect = boardSheet.getBoundingClientRect(), previewRect = preview.getBoundingClientRect();
+      const chip = document.createElement('div'); chip.className = `falling-chip ${color}`;
+      chip.style.width = `${targetRect.width}px`; chip.style.height = `${targetRect.height}px`;
+      chip.style.left = `${targetRect.left - sheetRect.left}px`; chip.style.top = `${previewRect.top - sheetRect.top + previewRect.height * 2 / 92}px`;
+      boardSheet.append(chip); await new Promise(requestAnimationFrame);
+      chip.style.top = `${targetRect.top - sheetRect.top}px`;
+      await new Promise(resolve => setTimeout(resolve, 500)); chip.remove();
+    }
+    function findWin(r, c, color) {
+      const directions = [[0,1],[1,0],[1,1],[1,-1]];
+      for (const [dr, dc] of directions) {
+        const line = [[r,c]];
+        for (const sign of [-1,1]) for (let i=1;;i++) { const nr=r+dr*i*sign, nc=c+dc*i*sign; if(nr<0||nr>=rows||nc<0||nc>=cols||board[nr][nc]!==color) break; sign<0 ? line.unshift([nr,nc]) : line.push([nr,nc]); }
+        if (line.length >= 4) return line;
+      }
+    }
+    function finish(color, cells) { locked = true; if (cells) cells.forEach(([r,c]) => boardEl.children[r * cols + c].classList.add('win')); turn.textContent = color === 'blue' ? 'Ты победил!' : color === 'black' ? 'Победил соперник' : 'Ничья'; show(turn.textContent); }
+    render();
+  </script>
+</body>
+</html>

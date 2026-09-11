@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet">
+  <title>Blitzzz</title>
+  <style>
+    :root { background:#d9d9d9; color:#111; font-family:'Merriweather', Georgia, serif; }
+    * { box-sizing:border-box; } body { min-height:100vh; margin:0; display:grid; place-items:center; }
+    .app { width:min(100%,450px); min-height:100svh; background:#f8f8f8; padding:24px 16px 36px; }
+    header { display:grid; justify-items:center; gap:8px; margin-bottom:24px; }
+    h1 { margin:0; font-size:20px; line-height:25px; font-weight:700; }
+    .profile { display:flex; align-items:center; gap:6px; margin:0; padding:4px 12px 4px 4px; border-radius:999px; background:#ececec; color:rgba(0,0,0,.5); font-size:12px; font-weight:700; }
+    .profile img { width:20px; height:20px; border-radius:50%; object-fit:cover; }
+    .games { display:grid; gap:8px; }
+    .game-card { min-height:128px; display:flex; align-items:stretch; gap:16px; overflow:hidden; padding:16px; border:0; border-radius:24px; background:#ececec; color:inherit; text-decoration:none; transition:transform .16s ease, box-shadow .16s ease; }
+    .game-card:focus-visible { outline:3px solid #004cff; outline-offset:2px; }
+    .game-card:not(.soon):hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.08); }
+    .copy { display:flex; flex:1; min-width:0; flex-direction:column; justify-content:center; gap:8px; }
+    h2 { margin:0; font-size:16px; line-height:20px; font-weight:700; }
+    .copy p { margin:0; color:rgba(0,0,0,.5); font-size:12px; line-height:15px; }
+    .preview { width:96px; height:96px; flex:none; position:relative; overflow:hidden; }
+    .connect { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; align-content:start; padding-top:1px; }
+    .connect i { aspect-ratio:1; border-radius:50%; background:#f8f8f8; } .connect i:nth-child(24), .connect i:nth-child(31) { background:#004cff; } .connect i:nth-child(30), .connect i:nth-child(37), .connect i:nth-child(38) { background:#111; }
+    .tic { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:1px; background:#111; border-radius:8px; padding:1px; }
+    .tic i { position:relative; background:#f8f8f8; } .tic i:nth-child(2)::before,.tic i:nth-child(4)::before,.tic i:nth-child(6)::before { content:'×'; position:absolute; inset:-13px 0 0; text-align:center; font-family:Arial,sans-serif; font-size:47px; font-weight:300; color:#111; }
+    .tic i:nth-child(5)::before,.tic i:nth-child(8)::before { content:''; position:absolute; inset:7px; border:3px solid #004cff; border-radius:50%; }
+    .sea, .hall { display:grid; grid-template-columns:repeat(10,1fr); grid-template-rows:repeat(10,1fr); gap:1px; background:#d8d8d8; }
+    .sea i, .hall i { background:#f8f8f8; } .sea i:nth-child(26), .sea i:nth-child(27), .sea i:nth-child(28), .sea i:nth-child(53) { background:#004cff; } .sea i:nth-child(67), .sea i:nth-child(68), .sea i:nth-child(69), .sea i:nth-child(70) { background:#111; }
+    .hall i:nth-child(26), .hall i:nth-child(46), .hall i:nth-child(56), .hall i:nth-child(66) { background:#111; } .hall i:nth-child(81) { background:#004cff; border-radius:50%; transform:scale(.8); }
+    .soon { cursor:default; } .soon .preview { opacity:.55; } .badge { align-self:flex-start; margin-left:auto; padding:4px 7px; border-radius:999px; background:#f8f8f8; color:rgba(0,0,0,.45); font-size:10px; line-height:12px; white-space:nowrap; }
+    #notice { position:fixed; bottom:24px; left:50%; z-index:2; width:max-content; max-width:calc(100vw - 32px); transform:translate(-50%,16px); padding:11px 14px; border-radius:14px; background:#111; color:#fff; font-size:12px; opacity:0; transition:.2s; pointer-events:none; } #notice.visible { opacity:1; transform:translate(-50%,0); }
+    @media (min-width:451px) { .app { min-height:852px; border-radius:48px; } } @media (max-height:740px) { .app { padding-top:18px; } header { margin-bottom:16px; } .game-card { min-height:112px; } .preview { width:80px; height:80px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header><h1>Blitzzz</h1><p class="profile"><img src="four-in-a-row/assets/avatar-1.jpeg" alt=""><span>serezha</span></p></header>
+    <section class="games" aria-label="Игры">
+      <a class="game-card" href="four-in-a-row/index.html"><div class="copy"><h2>Четыре в ряд</h2><p>Собери четыре фишки в линию раньше соперника</p></div><div class="preview connect" aria-hidden="true"></div></a>
+      <a class="game-card soon" href="games/tic-tac-toe/" data-soon><div class="copy"><h2>Крестики-нолики</h2><p>Выстрой три своих знака в ряд</p></div><div class="preview tic" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="badge">Скоро</span></a>
+      <a class="game-card soon" href="games/battleship/" data-soon><div class="copy"><h2>Морской бой</h2><p>Найди и потопи корабли соперника</p></div><div class="preview sea" aria-hidden="true"></div><span class="badge">Скоро</span></a>
+      <a class="game-card soon" href="games/corridor/" data-soon><div class="copy"><h2>Коридор</h2><p>Дойди до края поля первым, задерживая противника стенами</p></div><div class="preview hall" aria-hidden="true"></div><span class="badge">Скоро</span></a>
+    </section>
+  </main>
+  <div id="notice" role="status">Игра появится скоро</div>
+  <script>
+    for (const selector of ['.sea','.hall']) document.querySelector(selector).replaceChildren(...Array.from({length:100}, () => document.createElement('i')));
+    let timer; document.querySelectorAll('[data-soon]').forEach(card => card.addEventListener('click', event => { event.preventDefault(); const notice = document.querySelector('#notice'); notice.classList.add('visible'); clearTimeout(timer); timer = setTimeout(() => notice.classList.remove('visible'), 1800); }));
+  </script>
+</body>
+</html>
