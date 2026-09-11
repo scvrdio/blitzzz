@@ -17,11 +17,21 @@ const gameIcons: Record<GameDefinition['id'], string> = {
   chapayev: '/game-icons/chapayev.svg',
 };
 
+const gameDarkIcons: Record<GameDefinition['id'], string> = {
+  'four-in-a-row': '/game-icons/four-in-a-row-dark.svg',
+  'tic-tac-toe': '/game-icons/tic-tac-toe-dark.svg',
+  'sea-battle': '/game-icons/sea-battle-dark.svg',
+  checkers: '/game-icons/checkers-dark.svg',
+  quoridor: '/game-icons/quoridor-dark.svg',
+  chapayev: '/game-icons/chapayev-dark.svg',
+};
+
 export function GameCard({ game, onUnavailable }: GameCardProps) {
   const router = useRouter();
   const content = <>
     <span className="game-card__visual" aria-hidden="true">
-      <img src={gameIcons[game.id]} alt="" />
+      <img className="game-card__icon game-card__icon--light" src={gameIcons[game.id]} alt="" />
+      <img className="game-card__icon game-card__icon--dark" src={gameDarkIcons[game.id]} alt="" />
     </span>
     <span className="game-card__copy">
       <strong>{game.title}</strong>
