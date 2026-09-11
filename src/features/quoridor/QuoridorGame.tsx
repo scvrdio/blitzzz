@@ -373,6 +373,7 @@ export function QuoridorGame({ initialRoomId }: { initialRoomId?: string }) {
 
   return <GameShell
     title="Коридор"
+    playerColor={mySide}
     opponent={opponent}
     onInvite={invite}
     notice={notice.message}

@@ -34,6 +34,12 @@ export const telegram = {
   notify(style: TelegramNotificationStyle) {
     getWebApp()?.HapticFeedback?.notificationOccurred?.(style);
   },
+  setHeaderColor(color: string) {
+    getWebApp()?.setHeaderColor?.(color);
+  },
+  setBackgroundColor(color: string) {
+    getWebApp()?.setBackgroundColor?.(color);
+  },
   setVerticalSwipes(disabled: boolean) {
     const webApp = getWebApp();
     if (disabled) webApp?.disableVerticalSwipes?.();

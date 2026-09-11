@@ -494,6 +494,7 @@ export function ConnectFourGame({ initialRoomId }: { initialRoomId?: string }) {
   return (
     <GameShell
       title="Четыре в ряд"
+      playerColor={myChip}
       opponent={opponent}
       onInvite={invite}
       notice={notice.message}

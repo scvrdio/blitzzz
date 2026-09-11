@@ -736,6 +736,7 @@ export function ChapaevGame({ initialRoomId, playerSide = 'blue' }: { initialRoo
   return (
     <GameShell
       title="Чапаева"
+      playerColor={mySide}
       opponent={opponent}
       onInvite={invite}
       notice={notice.message}

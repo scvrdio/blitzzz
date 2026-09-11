@@ -233,6 +233,7 @@ export function TicTacToeGame({ initialRoomId }: { initialRoomId?: string }) {
   return (
     <GameShell
       title="Крестики-нолики"
+      playerColor={myMark === 'x' ? 'blue' : 'black'}
       opponent={opponent}
       onInvite={invite}
       notice={notice.message}

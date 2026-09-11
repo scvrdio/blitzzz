@@ -474,6 +474,7 @@ export function SeaBattleGame({ initialRoomId }: { initialRoomId?: string }) {
   return (
     <GameShell
       title="Морской бой"
+      playerColor={playerColor}
       opponent={opponent}
       onInvite={invite}
       notice={notice.message}

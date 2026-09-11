@@ -14,6 +14,7 @@ const initialTelegramLayout = `
   (() => {
     const root = document.documentElement;
     const webApp = window.Telegram?.WebApp;
+    try { root.dataset.theme = window.localStorage.getItem('blitzzz-theme') === 'dark' ? 'dark' : 'light'; } catch {}
     let cachedInset = null;
     try { cachedInset = JSON.parse(window.sessionStorage.getItem('blitzzz-content-safe-inset') || 'null'); } catch {}
     const inset = cachedInset || webApp?.contentSafeAreaInset;

@@ -5,7 +5,7 @@
 html, body { min-height: 100%; margin: 0; overflow-x: hidden; scrollbar-width: none; }
 html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 body { min-height: 100dvh; color: var(--color-foreground); background: var(--color-background); font-family: var(--font-family-brand); }
-body:has(.game-screen) { height: 100dvh; overflow: hidden; padding: calc(40px + var(--tg-content-safe-top)) var(--tg-content-safe-right) var(--tg-content-safe-bottom) var(--tg-content-safe-left); display: grid; place-items: center; }
+body:has(.game-screen) { height: 100dvh; overflow: hidden; padding: calc(40px + var(--tg-content-safe-top)) var(--tg-content-safe-right) var(--tg-content-safe-bottom) var(--tg-content-safe-left); display: grid; place-items: center; background: linear-gradient(to bottom, var(--active-game-color, var(--color-background)) 0 calc(106px + var(--tg-content-safe-top)), var(--color-background) calc(106px + var(--tg-content-safe-top))); }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { appearance: none; font: inherit; }
 a { color: inherit; }
@@ -47,7 +47,9 @@ a { color: inherit; }
 .game-card__copy span { color: var(--color-foreground); font-size: var(--font-size-xs); font-weight: var(--weight-regular); line-height: normal; opacity: .5; white-space: pre-line; }
 .game-card__copy time { color: var(--color-primary); font: var(--weight-regular) var(--font-size-xs)/normal var(--font-family-mono); white-space: nowrap; }
 
-.game-screen { position: relative; width: min(100%, var(--game-container-width)); height: min(100%, var(--frame-height)); min-height: min(670px, 100%); margin: auto; overflow: hidden; display: flex; flex-direction: column; background: var(--color-background); border-radius: var(--radius-frame); }
+.game-screen { --game-player-color: var(--color-primary); --game-header-ink: #ffffff; position: relative; width: min(100%, var(--game-container-width)); height: min(100%, var(--frame-height)); min-height: min(670px, 100%); margin: auto; overflow: hidden; display: flex; flex-direction: column; background: var(--game-player-color); border-radius: var(--radius-frame); }
+.game-screen--black { --game-player-color: var(--color-foreground); --game-header-ink: var(--color-background); }
+.game-content { position: relative; z-index: 1; display: flex; flex: 1; min-height: 0; flex-direction: column; overflow: hidden; margin-top: var(--space-2); border-radius: var(--radius-frame) var(--radius-frame) 0 0; background: var(--color-background); }
 .app-header { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: start; width: 100%; }
 .app-header__side { width: 44px; min-height: 44px; }
 .app-header__side--trailing { justify-self: end; }
@@ -62,6 +64,10 @@ a { color: inherit; }
 .theme-toggle.is-dark .theme-toggle__moon { opacity: 1; transform: rotate(0) scale(1); }
 :root[data-theme='dark'] .theme-toggle img { filter: invert(1); }
 .game-header { position: relative; z-index: 10; flex: none; height: 66px; padding: var(--space-4); animation: game-reveal 260ms cubic-bezier(.2, .8, .2, 1) both; }
+.game-screen .game-header { color: var(--game-header-ink); background: var(--game-player-color); }
+.game-screen .game-header .player-badge { color: var(--game-header-ink); }
+.game-screen .game-header .player-badge > span { opacity: .58; }
+.game-screen .game-header .button--surface { background: var(--color-background); }
 .game-header__invite { width: 44px; height: 44px; min-height: 44px; padding: 14px; }
 .game-header__invite img { display: block; width: 16px; height: 16px; }
 .game-header__exit { position: relative; z-index: 1; justify-self: end; width: 44px; height: 44px; min-height: 44px; padding: 0; text-decoration: none; }

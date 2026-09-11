@@ -306,6 +306,7 @@ export function CheckersGame({ initialRoomId }: { initialRoomId?: string }) {
   return (
     <GameShell
       title="Шашки"
+      playerColor={myColor}
       opponent={opponent}
       onInvite={invite}
       notice={notice.message}
